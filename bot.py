@@ -1,4 +1,4 @@
-import os, re
+import os
 from dotenv import dotenv_values
 dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
 
@@ -57,11 +57,11 @@ def alarmGen(chat_id):
             userIdValues[chat_id]['lastDates'] = json.dumps(newDates)
             logging.info(f'daysQty {daysQty}')
             if(daysQty==0):
-                context.bot.send_message(job.context, text=f'Всего следят за очередью: {len(userIdValues)}\nОсутствуют дни для записи')
+                context.bot.send_message(job.context, text=f'Осутствуют дни для записи\nВсего следят за очередью: {len(userIdValues)}\n')
             else:
                 daysStr = (', '.join(str(dt) for dt in newDates))
                 textMsg = (
-                    f'Всего следят за очередью: {len(userIdValues)}\nЕсть запись на {daysQty} дней:\n{daysStr}'
+                    f'Есть запись на {daysQty} дней:\n{daysStr}\nВсего следят за очередью: {len(userIdValues)}\n'
                 )
                 keyboard = InlineKeyboardMarkup.from_button(
                     InlineKeyboardButton(text="Записаться!", url=config['BUTTON_URL'])
