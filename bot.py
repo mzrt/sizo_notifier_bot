@@ -30,6 +30,7 @@ def start(update: Update, context: CallbackContext) -> None:
     /watch для запуска отслеживания доступных дней
     /unwatch для остановки отслеживания
     /help для подсказки''')
+    watch(update, context=context)
 userIdValues = {}
 def alarmGen(chat_id):
     global userIdValues
