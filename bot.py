@@ -11,6 +11,7 @@ config = {
     **os.environ,  # override loaded values with environment variables
 }
 
+from utils import datePeriodName
 import traceback, time
 import json
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -60,8 +61,9 @@ def alarmGen(chat_id):
                 context.bot.send_message(job.context, text=f'Осутствуют дни для записи\nВсего следят за очередью: {len(userIdValues)}\n')
             else:
                 daysStr = (', '.join(str(dt) for dt in newDates))
+                strDatePeriodName = ''.join(datePeriodName({"d": daysQty}))
                 textMsg = (
-                    f'Есть запись на {daysQty} дней:\n{daysStr}\nВсего следят за очередью: {len(userIdValues)}\n'
+                    f'Есть запись на {strDatePeriodName}:\n{daysStr}\nВсего следят за очередью: {len(userIdValues)}\n'
                 )
                 keyboard = InlineKeyboardMarkup.from_button(
                     InlineKeyboardButton(text="Записаться!", url=config['BUTTON_URL'])
