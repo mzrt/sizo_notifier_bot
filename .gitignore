@@ -1,5 +1,5 @@
 .env*.local
 *.log
-data.json
-days.txt
+data*.json
 *pycache*
+botState*.json

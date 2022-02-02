@@ -1,4 +1,4 @@
-import os
+import os, re
 from dotenv import dotenv_values
 dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
 
@@ -7,6 +7,7 @@ config = {
     **dotenv_values(".env.secret"),
     **dotenv_values(".env.shared.local"),
     **dotenv_values(".env.secret.local"),
+    **(dotenv_values(".env.development.local") if os.environ['BOT_MODE']=="development" else {}),
     **os.environ,  # override loaded values with environment variables
 }
 
@@ -15,12 +16,11 @@ import json
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Updater, CommandHandler, CallbackContext
 import logging
-logging.basicConfig(filename='bot.log', encoding='utf-8', level=logging.INFO)
+logging.basicConfig(filename=config['LOG_FILENAME_BOT'], encoding='utf-8', level=logging.INFO)
 minDue = 60
 logger = logging.getLogger(__name__)
 
-
-logging.info(f'config {json.dumps(config)}')
+logging.info(f'config {json.dumps(config, indent=4)}')
 messageInterval = 24*60*60
 def start(update: Update, context: CallbackContext) -> None:
     """Sends explanation on how to use the bot."""
@@ -42,7 +42,7 @@ def alarmGen(chat_id):
         """Send the alarm message."""
         job = context.job
         
-        with open('data.json', 'r') as input_file:
+        with open(config['DATA_JSON_FILENAME'], 'r') as input_file:
             data = json.load(input_file)
         newDates = data['dates']
         daysQty = len(newDates)
@@ -63,7 +63,7 @@ def alarmGen(chat_id):
                     f'Всего следят за очередью: {len(userIdValues)}\nЕсть запись на {daysQty} дней:\n{daysStr}'
                 )
                 keyboard = InlineKeyboardMarkup.from_button(
-                    InlineKeyboardButton(text="Записаться!", url=config['URL'])
+                    InlineKeyboardButton(text="Записаться!", url=config['BUTTON_URL'])
                 )
                 # Send message with text and appended InlineKeyboard
                 # textMsg = f'Есть запись на {daysQty} дней:\n{daysStr}\nПерейти на '+'[сайт]('+data['url']+')'

@@ -7,6 +7,7 @@ config = {
     **dotenv_values(".env.secret"),
     **dotenv_values(".env.shared.local"),
     **dotenv_values(".env.secret.local"),
+    **(dotenv_values(".env.development.local") if os.environ['BOT_MODE']=="development" else {}),
     **os.environ,  # override loaded values with environment variables
 }
 
@@ -14,7 +15,8 @@ url = config['URL']
 import re, requests, json
 from lxml import html
 import logging
-logging.basicConfig(filename='requestParser.log', encoding='utf-8', level=logging.INFO)
+level = logging.DEBUG if os.environ['BOT_MODE']=="development" else logging.INFO
+logging.basicConfig(filename=config['LOG_FILENAME_PARSER'], encoding='utf-8', level=level)
 
 logging.info(f'config {json.dumps(config, indent=4)}')
 def load_data():
@@ -57,8 +59,8 @@ def job():
         'url': url,
         'dates': getDaysList(tree)
     }
-    logging.debug(f'job {json.dumps(data)}')
-    with open('data.json', 'w') as output_file:
+    logging.debug(f'job save data to {config["DATA_JSON_FILENAME"]}: {json.dumps(data)}')
+    with open(config['DATA_JSON_FILENAME'], 'w') as output_file:
         json.dump(data, output_file, ensure_ascii=False, indent=4)
 
 while True:
