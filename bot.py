@@ -1,5 +1,6 @@
 import os
 from dotenv import dotenv_values
+from requestAlive import getLastTimeout
 dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
 
 config = {
@@ -7,7 +8,7 @@ config = {
     **dotenv_values(".env.secret"),
     **dotenv_values(".env.shared.local"),
     **dotenv_values(".env.secret.local"),
-    **(dotenv_values(".env.development.local") if os.environ['BOT_MODE']=="development" else {}),
+    **(dotenv_values(".env.development.local") if os.environ['app']=="dev" else {}),
     **os.environ,  # override loaded values with environment variables
 }
 
@@ -33,23 +34,45 @@ def start(update: Update, context: CallbackContext) -> None:
     /help для подсказки''')
     watch(update, context=context)
 userIdValues = {}
+
+def sendTimeoutInfo(chat_id, context: CallbackContext):
+    if(\
+        chat_id==config['BOTOWNER_ID']\
+    ):
+        interval = round(time.time()-getLastTimeout(config['DATA_JSON_FILENAME']))
+        requestInterval = int(config['REQUEST_MINUTES_INTERVAL'])*60
+        intervalMessageMinimal = requestInterval*1.5
+        if(interval>intervalMessageMinimal):
+            if(time.time()-userIdValues[chat_id]['lastNotifyDateService']>=int(config['SERVICE_MESSAGE_MINUTES_INTERVAL'])*60):
+                userIdValues[chat_id]['lastNotifyDateService'] = time.time()
+                userIdValues[chat_id]['issuefixed'] = 'false'
+                context.bot.send_message(chat_id, text=f'Превышен интервал запроса к сайту на {interval-requestInterval} секунд')
+        elif(userIdValues[chat_id]['issuefixed'] == 'false'):
+            context.bot.send_message(chat_id, text=f'Соединение с сайтом восстановлено')
+            userIdValues[chat_id]['issuefixed'] = 'true'
+
+
 def alarmGen(chat_id):
     global userIdValues
     userIdValues[chat_id] = {}
     userIdValues[chat_id]['lastDates'] = json.dumps([])
     userIdValues[chat_id]['lastNotifyDate'] = 0
+    userIdValues[chat_id]['lastNotifyDateService'] = 0
+    userIdValues[chat_id]['issuefixed'] = 'true'
     
     logging.info(f'userIdValues len {len(userIdValues)}')
     def alarm(context: CallbackContext) -> None:
         """Send the alarm message."""
         job = context.job
-        
-        with open(config['DATA_JSON_FILENAME'], 'r') as input_file:
-            data = json.load(input_file)
+        data = {'dates':[]}
+        if(os.path.isfile(config['DATA_JSON_FILENAME'])):
+            with open(config['DATA_JSON_FILENAME'], 'r') as input_file:
+                data = json.load(input_file)
         newDates = data['dates']
         daysQty = len(newDates)
         previousRun = userIdValues[chat_id]['lastNotifyDate']
         logging.info(f'previous run at {previousRun}, {time.time() - previousRun} seconds ago')
+        sendTimeoutInfo(chat_id, context)
         if (\
             (time.time() - previousRun) > messageInterval\
                 or userIdValues[chat_id]['lastDates'] != json.dumps(newDates)\

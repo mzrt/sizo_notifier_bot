@@ -8,7 +8,7 @@ config = {
     **dotenv_values(".env.secret"),
     **dotenv_values(".env.shared.local"),
     **dotenv_values(".env.secret.local"),
-    **(dotenv_values(".env.development.local") if os.environ['BOT_MODE']=="development" else {}),
+    **(dotenv_values(".env.development.local") if os.environ['app']=="dev" else {}),
     **os.environ,  # override loaded values with environment variables
 }
 
@@ -16,7 +16,7 @@ url = config['URL']
 import re, requests, json
 from lxml import html
 import logging
-level = logging.DEBUG if os.environ['BOT_MODE']=="development" else logging.INFO
+level = logging.DEBUG if os.environ['app']=="dev" else logging.INFO
 logging.basicConfig(filename=config['LOG_FILENAME_PARSER'], encoding='utf-8', level=level)
 
 logging.info(f'config {json.dumps(config, indent=4)}')
@@ -35,7 +35,7 @@ def load_data():
             raise Exception('Возникла непредвиденная ошибка: {}'.format(e)) from None
         session.close()
         logging.info('Ошибка подключения по адресу '+url+(':\n{}'.format(e)))
-    return '<html></html>'
+    return ''
 
 def getDaysQty(response):
     return len(
@@ -59,17 +59,18 @@ def getDaysList(response):
 from schedule import every, repeat, run_pending
 import time
 
-@repeat(every(2).minutes)
+@repeat(every(int(config['REQUEST_MINUTES_INTERVAL'])).minutes)
 def job():
     r = load_data()
-    tree = html.fromstring(r)
-    data = {
-        'url': url,
-        'dates': getDaysList(tree)
-    }
-    logging.debug(f'job save data to {config["DATA_JSON_FILENAME"]}: {json.dumps(data)}')
-    with open(config['DATA_JSON_FILENAME'], 'w') as output_file:
-        json.dump(data, output_file, ensure_ascii=False, indent=4)
+    if(len(r)>0):
+        tree = html.fromstring(r)
+        data = {
+            'url': url,
+            'dates': getDaysList(tree)
+        }
+        logging.debug(f'job save data to {config["DATA_JSON_FILENAME"]}: {json.dumps(data)}')
+        with open(config['DATA_JSON_FILENAME'], 'w') as output_file:
+            json.dump(data, output_file, ensure_ascii=False, indent=4)
 
 while True:
     run_pending()

@@ -3,4 +3,5 @@
 data*.json
 *pycache*
 botState*.json
+dev*.json
 tst.py
