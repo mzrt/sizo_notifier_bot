@@ -38,22 +38,17 @@ userIdValues = load(config['USERID_FILENAME'])
 commonContext = None
 
 def sendTimeoutInfo(context: CallbackContext):
-    title = 'sendTimeoutInfo'
     chat_id=config['BOTOWNER_ID']
     interval = round(time.time()-getLastTimeout(config['DATA_JSON_FILENAME']))
     requestInterval = int(config['REQUEST_MINUTES_INTERVAL'])*60
     intervalMessageMinimal = requestInterval*1.5
-    logging.info(f'{title} 1')
     if(interval>intervalMessageMinimal):
-        logging.info(f'{title} 2')
         if(time.time()-userIdValues['lastNotifyDateService']>=int(config['SERVICE_MESSAGE_MINUTES_INTERVAL'])*60):
-            logging.info(f'{title} 3')
             userIdValues['lastNotifyDateService'] = time.time()
             userIdValues['issuefixed'] = 'false'
             context.bot.send_message(chat_id, text=f'Превышен интервал запроса к сайту на {interval-requestInterval} секунд')
             save(config['USERID_FILENAME'], userIdValues)
     elif(userIdValues['issuefixed'] == 'false'):
-        logging.info(f'{title} 4')
         context.bot.send_message(chat_id, text=f'Соединение с сайтом восстановлено')
         userIdValues['issuefixed'] = 'true'
         save(config['USERID_FILENAME'], userIdValues)
@@ -76,7 +71,6 @@ def alarm(context: CallbackContext) -> None:
     for chat_id in userIdValues["chatIds"]:
         chatStore = userIdValues["chatIds"][chat_id]
         previousRun = chatStore['lastNotifyDate']
-        logging.info(f'previous run at {previousRun}, {time.time() - previousRun} seconds ago')
         if (\
             (time.time() - previousRun) > messageInterval\
                 or chatStore['lastDates'] != json.dumps(newDates)\
@@ -107,11 +101,8 @@ def remove_job_if_exists(name: str, context: CallbackContext) -> bool:
     return True
 
 def createChatIdStore(chat_id):
-    title = 'createChatIdStore'
-    logging.info(f'{title} chat_id {chat_id} 1')
     global userIdValues
     if not (str(chat_id) in userIdValues['chatIds']):
-        logging.info(f'{title} 2')
         userIdValues['chatIds'][chat_id] = {}
         userIdValues['chatIds'][chat_id]['lastDates'] = json.dumps([])
         userIdValues['chatIds'][chat_id]['lastNotifyDate'] = 0
