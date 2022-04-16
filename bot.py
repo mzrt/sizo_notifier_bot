@@ -1,7 +1,17 @@
 import os
 from dotenv import dotenv_values
+import traceback, time
+import json
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import Updater, CommandHandler, CallbackContext
+import logging
+
+# Local imports
 from botusers import load, save
 from requestAlive import getLastTimeout
+from utils.date import datePeriodName
+
+devMode = 'app' in os.environ and os.environ['app']=="dev"
 dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
 
 config = {
@@ -9,16 +19,11 @@ config = {
     **dotenv_values(".env.secret"),
     **dotenv_values(".env.shared.local"),
     **dotenv_values(".env.secret.local"),
-    **(dotenv_values(".env.development.local") if os.environ['app']=="dev" else {}),
+    **(dotenv_values(".env.development.local") if devMode else {}),
     **os.environ,  # override loaded values with environment variables
 }
+dataFileName = config['DATA_JSON_FILENAME']
 
-from utils import datePeriodName
-import traceback, time
-import json
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import Updater, CommandHandler, CallbackContext
-import logging
 logging.basicConfig(filename=config['LOG_FILENAME_BOT'], encoding='utf-8', level=logging.INFO)
 minDue = 30
 logger = logging.getLogger(__name__)
