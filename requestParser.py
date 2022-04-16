@@ -1,6 +1,11 @@
 from errno import ECONNABORTED, ECONNREFUSED, ECONNRESET, EPIPE, ESHUTDOWN
 import os
+import re, requests, json
+from lxml import html
+import logging
 from dotenv import dotenv_values
+
+devMode = 'app' in os.environ and os.environ['app']=="dev"
 dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
 
 config = {
@@ -8,15 +13,13 @@ config = {
     **dotenv_values(".env.secret"),
     **dotenv_values(".env.shared.local"),
     **dotenv_values(".env.secret.local"),
-    **(dotenv_values(".env.development.local") if os.environ['app']=="dev" else {}),
+    **(dotenv_values(".env.development.local") if devMode else {}),
     **os.environ,  # override loaded values with environment variables
 }
 
+dataFileName = config['DATA_JSON_FILENAME']
 url = config['URL']
-import re, requests, json
-from lxml import html
-import logging
-level = logging.DEBUG if os.environ['app']=="dev" else logging.INFO
+level = logging.DEBUG if devMode else logging.INFO
 logging.basicConfig(filename=config['LOG_FILENAME_PARSER'], encoding='utf-8', level=level)
 
 logging.info(f'config {json.dumps(config, indent=4)}')
@@ -46,6 +49,18 @@ def getDaysQty(response):
             )
         )
     )
+
+def getUrls(response):
+    onclickUrls = list(response.xpath('//a[@onclick]/@onclick'))
+    suffix = ''
+    if(len(onclickUrls)>0):
+        suffix = re.sub( "^.*'(&ss=(\d)+)'.*", '\\1', onclickUrls[0])
+    return list(
+        map(
+            lambda item: item + suffix,
+            response.xpath('//a[@onclick]/@href')
+        )
+    )
 def getDaysList(response):
     dayList = list(
         map(
@@ -68,8 +83,8 @@ def job():
             'url': url,
             'dates': getDaysList(tree)
         }
-        logging.debug(f'job save data to {config["DATA_JSON_FILENAME"]}: {json.dumps(data)}')
-        with open(config['DATA_JSON_FILENAME'], 'w') as output_file:
+        logging.debug(f'job save data to {dataFileName}: {json.dumps(data)}')
+        with open(dataFileName, 'w') as output_file:
             json.dump(data, output_file, ensure_ascii=False, indent=4)
 
 while True:
