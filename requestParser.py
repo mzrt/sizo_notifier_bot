@@ -68,7 +68,7 @@ def getDaysList(response):
             response.xpath('//a[@onclick]/@href')
         )
     )
-    logging.info(f'getDaysList {len(dayList)} {dayList}')
+    logging.debug(f'getDaysList {len(dayList)} {dayList}')
     return dayList
 
 from schedule import every, repeat, run_pending
