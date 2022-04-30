@@ -1,6 +1,6 @@
 .env*.local
 *.log
-data*.json
+*data*.json
 *pycache*
 botState*.json
 dev*.json
