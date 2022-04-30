@@ -1,4 +1,5 @@
 from typing import Dict
+import datetime
 
 words = {'y': ['лет', 'год', 'года'], 'm': ['месяцев', 'месяц', 'месяца'], 'd': ['дней', 'день', 'дня'], 'p': ['мест', 'место', 'места']}
 
@@ -14,3 +15,11 @@ def datePeriodName(dataDict:Dict):
             st = str(v), words[k][2]
         out.append(" ".join(st))
     return out
+
+def weekDayStr(dateStr):
+    weekDays = ['понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота', 'воскресенье']
+    try:
+        date = dateStr and datetime.datetime.strptime(dateStr, "%d.%m.%Y").date()
+        return weekDays[date.weekday()]
+    except:
+        return None

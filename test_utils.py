@@ -1,13 +1,17 @@
 import unittest
 import io
 from lxml import html
-from utils.date import datePeriodName
+from utils.date import datePeriodName, weekDayStr
 from utils.getUrlList import getParselUrls
 
 class DatePeriodNameTestCase(unittest.TestCase):
 
     def test_days(self):
         self.assertEqual('5 дней', ''.join(datePeriodName({'d':5})))
+    def test_weekDayName(self):
+        self.assertEqual('понедельник', weekDayStr('07.02.2022'))
+        self.assertEqual('понедельник', weekDayStr('7.2.2022'))
+        self.assertEqual('воскресенье', weekDayStr('13.2.2022'))
 
     def test_parseldays(self):
         with io.open('./test_data/html/parsel01.html', 'r', encoding="utf-8") as fp:
@@ -22,4 +26,4 @@ class DatePeriodNameTestCase(unittest.TestCase):
 
 # Executing the tests in the above test case class
 if __name__ == "__main__":
-  unittest.main()
+    unittest.main()

@@ -9,7 +9,7 @@ import logging
 # Local imports
 from botusers import load, save
 from requestAlive import getLastTimeout
-from utils.date import datePeriodName
+from utils.date import datePeriodName, weekDayStr
 
 devMode = 'app' in os.environ and os.environ['app']=="dev"
 dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
@@ -25,7 +25,7 @@ config = {
 dataFileName = config['DATA_JSON_FILENAME']
 
 logging.basicConfig(filename=config['LOG_FILENAME_BOT'], encoding='utf-8', level=logging.INFO)
-minDue = 30
+minDue = 5
 logger = logging.getLogger(__name__)
 
 logging.info(f'config {json.dumps(config, indent=4)}')
@@ -87,7 +87,7 @@ def alarm(context: CallbackContext) -> None:
             if(daysQty==0):
                 context.bot.send_message(chat_id, text='Осутствуют дни для записи\n'+chatQtyMessage)
             else:
-                daysStr = (', '.join(str(dt) for dt in newDates))
+                daysStr = (', '.join(str(dt)+f'({weekDayStr(dt)})' for dt in newDates))
                 strDatePeriodName = ''.join(datePeriodName({"d": daysQty}))
                 textMsg = f'Есть запись на {strDatePeriodName}:\n{daysStr}\n{chatQtyMessage}'
                 context.bot.send_message(chat_id, text=textMsg, reply_markup=openWebUrlkeyboard )
@@ -117,6 +117,9 @@ def watch(update: Update, context: CallbackContext) -> None:
     """Add a job to the queue."""
     chat_id = update.message.chat_id
     createChatIdStore(chat_id)
+    
+    chatQty = len(userIdValues["chatIds"])
+    chatQtyMessage = f'Количество чатов в которых следят за очередью: {chatQty}'
     global commonContext
     # context.bot.send_message(chat_id=update.effective_chat.id, text="Наблюдение запущено!")
     try:
@@ -137,7 +140,7 @@ def watch(update: Update, context: CallbackContext) -> None:
         text = 'Наблюдение запущено!'
         if job_removed:
             text += ' Предыдущее остановлено.'
-        update.message.reply_text(text)
+        update.message.reply_text(text+'\n'+chatQtyMessage)
 
     except (IndexError, ValueError):
         error_message = traceback.format_exc()
