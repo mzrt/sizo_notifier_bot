@@ -162,7 +162,7 @@ def sendall(update: Update, context: CallbackContext) -> None:
     botowner_id=config['BOTOWNER_ID']
     if sender_id == botowner_id:
         for chat_id in userIdValues["chatIds"]:
-            context.bot.send_message(botowner_id, text=f'{chat_id} {context.args[0]}')
+            context.bot.send_message(chat_id, text=f'{" ".join(context.args)}')
 
 
 def main() -> None:
