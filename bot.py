@@ -156,6 +156,15 @@ def unwatch(update: Update, context: CallbackContext) -> None:
     update.message.reply_text(text)
 
 
+def sendall(update: Update, context: CallbackContext) -> None:
+    """Send the alarm message."""
+    sender_id = str(update.message.chat_id)
+    botowner_id=config['BOTOWNER_ID']
+    if sender_id == botowner_id:
+        for chat_id in userIdValues["chatIds"]:
+            context.bot.send_message(botowner_id, text=f'{chat_id} {context.args[0]}')
+
+
 def main() -> None:
     """Run bot."""
     # Create the Updater and pass it your bot's token.
@@ -169,6 +178,7 @@ def main() -> None:
     dispatcher.add_handler(CommandHandler("watch", watch))
     dispatcher.add_handler(CommandHandler("help", start))
     dispatcher.add_handler(CommandHandler("unwatch", unwatch))
+    dispatcher.add_handler(CommandHandler("sendall", sendall))
 
     # Start the Bot
     updater.start_polling()
