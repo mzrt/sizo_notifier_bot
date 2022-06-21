@@ -33,11 +33,11 @@ messageInterval = 24*60*60
 def start(update: Update, context: CallbackContext) -> None:
     """Sends explanation on how to use the bot."""
     update.message.reply_text('''Привет!
-    Я буду сообщать вам когда появятся места в электронной очереди Новосибирского Сизо-1!
+    Я буду сообщать вам когда появятся места в электронной очереди {}!
     Используй команды
     /watch для запуска отслеживания доступных дней
     /unwatch для остановки отслеживания
-    /help для подсказки''')
+    /help для подсказки'''.format(config['SIZO_NAME']))
     watch(update, context=context)
 userIdValues = load(config['USERID_FILENAME'])
 commonContext = None
