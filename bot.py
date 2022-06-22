@@ -1,32 +1,31 @@
 import os
-from dotenv import dotenv_values
 import traceback, time
 import json
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Updater, CommandHandler, CallbackContext
-import logging
 
 # Local imports
 from botusers import load, save
+from logger import app_log_bot
 from requestAlive import getLastTimeout
 from utils.date import datePeriodName, weekDayStr
+from config import config
 
-devMode = 'app' in os.environ and os.environ['app']=="dev"
-dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
-
-config = {
-    **dotenv_values(".env.shared"),
-    **dotenv_values(".env.secret"),
-    **dotenv_values(".env.shared.local"),
-    **dotenv_values(".env.secret.local"),
-    **(dotenv_values(".env.development.local") if devMode else {}),
-    **os.environ,  # override loaded values with environment variables
-}
+logging = app_log_bot
 dataFileName = config['DATA_JSON_FILENAME']
+requestInterval = int(config['REQUEST_MINUTES_INTERVAL'])*60
+userIdFileName = config['USERID_FILENAME']
+botOwnerId = config['BOTOWNER_ID']
 
-logging.basicConfig(filename=config['LOG_FILENAME_BOT'], encoding='utf-8', level=logging.INFO)
+openWebUrlkeyboard = InlineKeyboardMarkup.from_button(
+    InlineKeyboardButton(text="Записаться!", url=config['BUTTON_URL'])
+)
+
+sendall_start = 0
+sendall_message = ''
+sendAllPrevIdx = -1
+
 minDue = 5
-logger = logging.getLogger(__name__)
 
 logging.info(f'config {json.dumps(config, indent=4)}')
 messageInterval = 24*60*60
@@ -39,38 +38,34 @@ def start(update: Update, context: CallbackContext) -> None:
     /unwatch для остановки отслеживания
     /help для подсказки'''.format(config['SIZO_NAME']))
     watch(update, context=context)
-userIdValues = load(config['USERID_FILENAME'])
+userIdValues = load(userIdFileName)
 commonContext = None
 
 def sendTimeoutInfo(context: CallbackContext):
-    chat_id=config['BOTOWNER_ID']
-    interval = round(time.time()-getLastTimeout(config['DATA_JSON_FILENAME']))
-    requestInterval = int(config['REQUEST_MINUTES_INTERVAL'])*60
+    chat_id=botOwnerId
+    interval = round(time.time()-getLastTimeout(dataFileName))
     intervalMessageMinimal = requestInterval*1.5
     if(interval>intervalMessageMinimal):
-        if(time.time()-userIdValues['lastNotifyDateService']>=int(config['SERVICE_MESSAGE_MINUTES_INTERVAL'])*60):
+        if(time.time()-userIdValues['lastNotifyDateService']>=requestInterval):
             userIdValues['lastNotifyDateService'] = time.time()
             userIdValues['issuefixed'] = 'false'
-            context.bot.send_message(chat_id, text=f'Превышен интервал запроса к сайту на {interval-requestInterval} секунд')
-            save(config['USERID_FILENAME'], userIdValues)
+            context.bot.send_message(chat_id, text=f'Превышен интервал запроса к сайту \
+                                     на {interval-requestInterval} секунд')
+            save(userIdFileName, userIdValues)
     elif(userIdValues['issuefixed'] == 'false'):
         context.bot.send_message(chat_id, text=f'Соединение с сайтом восстановлено')
         userIdValues['issuefixed'] = 'true'
-        save(config['USERID_FILENAME'], userIdValues)
+        save(userIdFileName, userIdValues)
 
-
-openWebUrlkeyboard = InlineKeyboardMarkup.from_button(
-    InlineKeyboardButton(text="Записаться!", url=config['BUTTON_URL'])
-)
 def alarm(context: CallbackContext) -> None:
     """Send the alarm message."""
     data = {'dates':[]}
-    if(os.path.isfile(config['DATA_JSON_FILENAME'])):
-        with open(config['DATA_JSON_FILENAME'], 'r') as input_file:
+    if(os.path.isfile(dataFileName)):
+        with open(dataFileName, 'r') as input_file:
             data = json.load(input_file)
     newDates = data['dates']
     daysQty = len(newDates)
-    
+
     chatQty = len(userIdValues["chatIds"])
     chatQtyMessage = f'Количество чатов в которых следят за очередью: {chatQty}'
     for chat_id in userIdValues["chatIds"]:
@@ -82,10 +77,11 @@ def alarm(context: CallbackContext) -> None:
         ):
             chatStore['lastNotifyDate'] = time.time()
             chatStore['lastDates'] = json.dumps(newDates)
-            save(config['USERID_FILENAME'], userIdValues)
+            save(userIdFileName, userIdValues)
             logging.info(f'daysQty {daysQty}')
             if(daysQty==0):
-                context.bot.send_message(chat_id, text='Осутствуют дни для записи\n'+chatQtyMessage)
+                context.bot.send_message(chat_id, text='Осутствуют дни для записи\n'+\
+                                         chatQtyMessage)
             else:
                 daysStr = (', '.join(str(dt)+f'({weekDayStr(dt)})' for dt in newDates))
                 strDatePeriodName = ''.join(datePeriodName({"d": daysQty}))
@@ -111,13 +107,13 @@ def createChatIdStore(chat_id):
         userIdValues['chatIds'][chat_id] = {}
         userIdValues['chatIds'][chat_id]['lastDates'] = json.dumps([])
         userIdValues['chatIds'][chat_id]['lastNotifyDate'] = 0
-        save(config['USERID_FILENAME'], userIdValues)
+        save(userIdFileName, userIdValues)
 
 def watch(update: Update, context: CallbackContext) -> None:
     """Add a job to the queue."""
     chat_id = update.message.chat_id
     createChatIdStore(chat_id)
-    
+
     chatQty = len(userIdValues["chatIds"])
     chatQtyMessage = f'Количество чатов в которых следят за очередью: {chatQty}'
     global commonContext
@@ -132,10 +128,16 @@ def watch(update: Update, context: CallbackContext) -> None:
         jobName = 'notify'
         job_removed = remove_job_if_exists(jobName, context)
         commonContext.job_queue.run_repeating(alarm, due, context=jobName, name=jobName, first=1)
-        
+
         current_jobs = commonContext.job_queue.get_jobs_by_name('service')
         if not current_jobs:
-            commonContext.job_queue.run_repeating(sendTimeoutInfo, int(config['REQUEST_MINUTES_INTERVAL'])*60, context='service', name='service', first=1)
+            commonContext.job_queue.run_repeating(
+                sendTimeoutInfo,
+                requestInterval,
+                context='service',
+                name='service',
+                first=1
+            )
 
         text = 'Наблюдение запущено!'
         if job_removed:
@@ -144,7 +146,9 @@ def watch(update: Update, context: CallbackContext) -> None:
 
     except (IndexError, ValueError):
         error_message = traceback.format_exc()
-        update.message.reply_text(f'Usage: /watch [<интервал проверки в секундах>]\n{error_message}')
+        update.message.reply_text(
+            f'Usage: /watch [<интервал проверки в секундах>]\n{error_message}'
+        )
 
 
 def unwatch(update: Update, context: CallbackContext) -> None:
@@ -155,14 +159,68 @@ def unwatch(update: Update, context: CallbackContext) -> None:
     text = 'Наблюдение остановлено!' if job_removed else 'Наблюдение не было запущено.'
     update.message.reply_text(text)
 
+def stopSendallJob(context: CallbackContext, userIds) -> None:
+    global sendall_start
+    jobName = 'sendall'
+    job_removed = remove_job_if_exists(jobName, context)
+
+    text = f'Рассылка остановлена! Разослано {len(userIds)} сообщений! \
+        За {time.time()-sendall_start} секунд.'
+    if job_removed:
+        context.bot.send_message(botOwnerId, text=text)
+    else:
+        context.bot.send_message(botOwnerId, text='Рассылка не остановлена')
+
+def sendallJob(context: CallbackContext) -> None:
+    global sendall_message
+    global sendAllPrevIdx
+    userIds = list(userIdValues["chatIds"].keys())
+    logging.debug(f'botOwnerId {botOwnerId}')
+    if len(userIds) > sendAllPrevIdx+1:
+        try:
+            sendAllPrevIdx += 1
+            chat_id = userIds[sendAllPrevIdx]
+            logging.debug(f'{sendAllPrevIdx} chat_id {chat_id}')
+            context.bot.send_message(chat_id, text=sendall_message)
+            if chat_id == userIds[-1]:
+                stopSendallJob(context, userIds)
+        except (IndexError, ValueError):
+            error_message = traceback.format_exc()
+            logging.debug(f'Не удалось отправить сообщение по {chat_id}')
+            logging.error(error_message)
 
 def sendall(update: Update, context: CallbackContext) -> None:
     """Send the alarm message."""
     sender_id = str(update.message.chat_id)
-    botowner_id=config['BOTOWNER_ID']
-    if sender_id == botowner_id:
-        for chat_id in userIdValues["chatIds"]:
-            context.bot.send_message(chat_id, text=f'{" ".join(context.args)}')
+    if sender_id == botOwnerId:
+        global commonContext
+        global sendall_start
+        global sendall_message
+        sendall_message = " ".join(context.args)
+        try:
+            # args[0] should contain the url
+            due = 5
+            jobName = 'sendall'
+            job_removed = remove_job_if_exists(jobName, commonContext)
+            sendall_start = time.time()
+            commonContext.job_queue.run_repeating(
+                sendallJob,
+                due,
+                context=context,
+                name=jobName,
+                first=1
+            )
+
+            current_jobs = commonContext.job_queue.get_jobs_by_name(jobName)
+
+            text = 'Рассылка запущена!'
+            if job_removed:
+                text += ' Предыдущая остановлена.'
+            update.message.reply_text(text)
+
+        except (IndexError, ValueError):
+            error_message = traceback.format_exc()
+            update.message.reply_text(f'Usage: /sendall [<сообщение>]\n{error_message}')
 
 
 def main() -> None:
