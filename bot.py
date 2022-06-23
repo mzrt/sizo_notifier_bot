@@ -1,4 +1,4 @@
-import os
+import os, re
 import traceback, time
 import json
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -17,6 +17,7 @@ requestInterval = int(config['REQUEST_SECONDS_INTERVAL'])*60
 userIdFileName = config['USERID_FILENAME']
 botOwnerId = config['BOTOWNER_ID']
 url=config['BUTTON_URL']
+markDownSizoName=re.sub(r'([-!])',r'\\\g<1>' ,config['SIZO_NAME'])
 logging.debug(f'url {url}')
 
 openWebUrlkeyboard = InlineKeyboardMarkup.from_button(
@@ -36,7 +37,7 @@ def start(update: Update, context: CallbackContext) -> None:
     user = update.effective_user
     update.message.reply_markdown_v2(
         rf'''Привет, {user.mention_markdown_v2()}\!
-        Я буду сообщать вам когда появятся места в электронной очереди {config['SIZO_NAME']}\!
+        Я буду сообщать вам когда появятся места в электронной очереди {markDownSizoName}\!
         Используй команды
         /watch для запуска отслеживания доступных дней
         /unwatch для остановки отслеживания
