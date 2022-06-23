@@ -17,7 +17,7 @@ requestInterval = int(config['REQUEST_SECONDS_INTERVAL'])*60
 userIdFileName = config['USERID_FILENAME']
 botOwnerId = config['BOTOWNER_ID']
 url=config['BUTTON_URL']
-markDownSizoName=re.sub(r'([-!])',r'\\\g<1>' ,config['SIZO_NAME'])
+markDownSizoName=re.sub(r'([-!.])',r'\\\g<1>' ,config['SIZO_NAME'])
 logging.debug(f'url {url}')
 
 openWebUrlkeyboard = InlineKeyboardMarkup.from_button(
