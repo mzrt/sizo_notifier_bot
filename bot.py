@@ -2,23 +2,25 @@ import os
 import traceback, time
 import json
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import Updater, CommandHandler, CallbackContext
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 
 # Local imports
 from botusers import load, save
-from logger import app_log_bot
+from logger import app_log_bot as logging
 from requestAlive import getLastTimeout
 from utils.date import datePeriodName, weekDayStr
 from config import config
 
-logging = app_log_bot
+#logging = app_log_bot
 dataFileName = config['DATA_JSON_FILENAME']
 requestInterval = int(config['REQUEST_MINUTES_INTERVAL'])*60
 userIdFileName = config['USERID_FILENAME']
 botOwnerId = config['BOTOWNER_ID']
+url=config['BUTTON_URL']
+logging.debug(f'url {url}')
 
 openWebUrlkeyboard = InlineKeyboardMarkup.from_button(
-    InlineKeyboardButton(text="Записаться!", url=config['BUTTON_URL'])
+    InlineKeyboardButton(text="Записаться!", url=url)
 )
 
 sendall_start = 0
@@ -31,12 +33,15 @@ logging.info(f'config {json.dumps(config, indent=4)}')
 messageInterval = 24*60*60
 def start(update: Update, context: CallbackContext) -> None:
     """Sends explanation on how to use the bot."""
-    update.message.reply_text('''Привет!
-    Я буду сообщать вам когда появятся места в электронной очереди {}!
-    Используй команды
-    /watch для запуска отслеживания доступных дней
-    /unwatch для остановки отслеживания
-    /help для подсказки'''.format(config['SIZO_NAME']))
+    user = update.effective_user
+    update.message.reply_markdown_v2(
+        rf'''Привет, {user.mention_markdown_v2()}\!
+        Я буду сообщать вам когда появятся места в электронной очереди {config['SIZO_NAME']}\!
+        Используй команды
+        /watch для запуска отслеживания доступных дней
+        /unwatch для остановки отслеживания
+        /help для подсказки'''
+    )
     watch(update, context=context)
 userIdValues = load(userIdFileName)
 commonContext = None
@@ -58,6 +63,7 @@ def sendTimeoutInfo(context: CallbackContext):
         save(userIdFileName, userIdValues)
 
 def alarm(context: CallbackContext) -> None:
+    global openWebUrlkeyboard
     """Send the alarm message."""
     data = {'dates':[]}
     if(os.path.isfile(dataFileName)):
@@ -86,7 +92,11 @@ def alarm(context: CallbackContext) -> None:
                 daysStr = (', '.join(str(dt)+f'({weekDayStr(dt)})' for dt in newDates))
                 strDatePeriodName = ''.join(datePeriodName({"d": daysQty}))
                 textMsg = f'Есть запись на {strDatePeriodName}:\n{daysStr}\n{chatQtyMessage}'
-                context.bot.send_message(chat_id, text=textMsg, reply_markup=openWebUrlkeyboard )
+                context.bot.send_message(
+                    chat_id,
+                    text=textMsg,
+                    reply_markup=openWebUrlkeyboard
+                )
 
 
 def remove_job_if_exists(name: str, context: CallbackContext) -> bool:
