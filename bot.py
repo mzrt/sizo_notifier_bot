@@ -6,14 +6,14 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Callb
 
 # Local imports
 from botusers import load, save
-from logger import app_log_bot as logging
+from logger import logger_bot as logging
 from requestAlive import getLastTimeout
 from utils.date import datePeriodName, weekDayStr
 from config import config
 
 #logging = app_log_bot
 dataFileName = config['DATA_JSON_FILENAME']
-requestInterval = int(config['REQUEST_MINUTES_INTERVAL'])*60
+requestInterval = int(config['REQUEST_SECONDS_INTERVAL'])*60
 userIdFileName = config['USERID_FILENAME']
 botOwnerId = config['BOTOWNER_ID']
 url=config['BUTTON_URL']

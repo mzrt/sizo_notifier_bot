@@ -5,7 +5,7 @@ from lxml import html
 from dotenv import dotenv_values
 
 # Local imports
-from logger import app_log_bot as logging
+from logger import logger_parser as logging
 from config import config
 
 url = config['URL']
