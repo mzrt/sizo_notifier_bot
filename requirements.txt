@@ -4,3 +4,4 @@ python-telegram-bot===13.11
 requests
 schedule
 selenium
+pysqlite3

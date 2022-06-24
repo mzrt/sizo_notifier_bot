@@ -4,6 +4,7 @@
 *data*.json
 *pycache*
 botState*.json
+*.db
 dev*.json
 userid.json
 tst.py

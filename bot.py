@@ -12,7 +12,7 @@ from utils.date import datePeriodName, weekDayStr
 from config import config
 
 #logging = app_log_bot
-dataFileName = config['DATA_JSON_FILENAME']
+dataFileName = config['SELENIUM_DATA_JSON_FILENAME']
 requestInterval = int(config['REQUEST_SECONDS_INTERVAL'])*60
 userIdFileName = config['USERID_FILENAME']
 botOwnerId = config['BOTOWNER_ID']
@@ -69,7 +69,7 @@ def alarm(context: CallbackContext) -> None:
     data = {'dates':[]}
     if(os.path.isfile(dataFileName)):
         with open(dataFileName, 'r') as input_file:
-            data = json.load(input_file)
+            data = json.load(input_file)[url]
     newDates = data['dates']
     daysQty = len(newDates)
 

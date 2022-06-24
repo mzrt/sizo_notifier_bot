@@ -1,0 +1,85 @@
+import json
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
+# Local imports
+from logger import logger_selenium as logging
+from config import config
+
+#urls = config['URLS']
+authlogin = config['AUTH_LOGIN']
+authpass = config['AUTH_PASS']
+dataFileName = config['SELENIUM_DATA_JSON_FILENAME']
+
+browser = webdriver.Firefox()
+urls = [
+    'https://fsin-okno.ru/base/spbilo/sizo1kresty?order_type=2',
+    'https://fsin-okno.ru/base/moscow/matrosska',
+    'https://fsin-okno.ru/base/moscow/matrosska?order_type=2',
+    'https://fsin-okno.ru/base/novosibirsk/si1novosib',
+    'https://fsin-okno.ru/base/novosibirsk/s2kuibishev'
+]
+
+scriptDays = """
+return Array.from(document.querySelectorAll('div#graphic_container > a')).map( a=> a.href.replace(
+    /^.*&date=(\d{4})-(\d\d)-(\d\d).*$/g,
+    '$3.$2.$1'
+))
+"""
+
+logging.info(f'config {json.dumps(config, indent=4)}')
+
+from schedule import every, repeat, run_pending
+import time
+prevUrlIdx = -1
+currentUrlIdx = 0
+data = {}
+
+@repeat(every(int(config['REQUEST_SECONDS_INTERVAL'])).seconds)
+def job():
+    global prevUrlIdx
+    global currentUrlIdx
+    global data
+    global urls
+    global scriptDays
+    canGetData = False
+    if prevUrlIdx != currentUrlIdx:
+        logging.info(f'1. prevUrlIdx {prevUrlIdx} currentUrlIdx {currentUrlIdx}')
+        browser.get(urls[currentUrlIdx])
+    prevUrlIdx = currentUrlIdx
+    logging.info(f'2. prevUrlIdx {prevUrlIdx} currentUrlIdx {currentUrlIdx}')
+    if browser.find_elements_by_css_selector('form#login_form'):
+        logging.info(f'3.')
+        login = browser.find_element(By.XPATH, '//div/input[@name="login"]')
+        login.send_keys(authlogin + Keys.TAB + authpass)
+        authButton = browser.find_element(By.XPATH, '//div/a[@onclick]')
+        authButton.click()
+    logging.info(f'4.')
+    if browser.find_elements_by_css_selector('div#graphic_container'):
+        logging.info(f'5.')
+        canGetData = True
+    else:
+        logging.info(f'6.')
+        element = WebDriverWait(browser, 10).until(
+            EC.presence_of_element_located((By.ID, "graphic_container"))
+        )
+        if browser.find_elements_by_css_selector('div#graphic_container'):
+            logging.info(f'7.')
+            canGetData = True
+    if canGetData:
+        logging.info(f'8.')
+        days = browser.execute_script(scriptDays)
+        logging.info(f'8. days {days}')
+        data[urls[currentUrlIdx]] = days
+        currentUrlIdx = (currentUrlIdx+1)%len(urls)
+        logging.debug(f'job save data to {dataFileName}: {json.dumps(data)}')
+        with open(dataFileName, 'w') as output_file:
+            json.dump(data, output_file, ensure_ascii=False, indent=4)
+
+while True:
+    logging.info(f'0.')
+    run_pending()
+    time.sleep(1)
