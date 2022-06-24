@@ -12,9 +12,9 @@ if [ "$app" = 'dev' ]; then
 else
 	screen -S $screenname -X -p0 stuff $'sh run_bot.sh\n'
 fi
-screen -S $screenname -X screen -t "parser run"
-if [ "$app" = 'dev' ]; then
-	screen -S $screenname -X -p1 stuff $'sh dev_run_parser.sh\n'
-else
-	screen -S $screenname -X -p1 stuff $'sh run_parser.sh\n'
-fi
+#screen -S $screenname -X screen -t "parser run"
+#if [ "$app" = 'dev' ]; then
+#	screen -S $screenname -X -p1 stuff $'sh dev_run_parser.sh\n'
+#else
+#	screen -S $screenname -X -p1 stuff $'sh run_parser.sh\n'
+#fi
