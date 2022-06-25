@@ -3,6 +3,7 @@ import traceback, time
 import json
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
+from telegram.error import  Unauthorized
 
 # Local imports
 from botusers import load, save
@@ -86,18 +87,24 @@ def alarm(context: CallbackContext) -> None:
             chatStore['lastDates'] = json.dumps(newDates)
             save(userIdFileName, userIdValues)
             logging.debug(f'daysQty {daysQty}')
-            if(daysQty==0):
-                context.bot.send_message(chat_id, text='Осутствуют дни для записи\n'+\
-                                         chatQtyMessage)
-            else:
-                daysStr = (', '.join(str(dt)+f'({weekDayStr(dt)})' for dt in newDates))
-                strDatePeriodName = ''.join(datePeriodName({"d": daysQty}))
-                textMsg = f'Есть запись на {strDatePeriodName}:\n{daysStr}\n{chatQtyMessage}'
-                context.bot.send_message(
-                    chat_id,
-                    text=textMsg,
-                    reply_markup=openWebUrlkeyboard
-                )
+
+            try:
+                if(daysQty==0):
+                    context.bot.send_message(chat_id, text='Осутствуют дни для записи\n'+\
+                                            chatQtyMessage)
+                else:
+                    daysStr = (', '.join(str(dt)+f'({weekDayStr(dt)})' for dt in newDates))
+                    strDatePeriodName = ''.join(datePeriodName({"d": daysQty}))
+                    textMsg = f'Есть запись на {strDatePeriodName}:\n{daysStr}\n{chatQtyMessage}'
+                    context.bot.send_message(
+                        chat_id,
+                        text=textMsg,
+                        reply_markup=openWebUrlkeyboard
+                    )
+            except Unauthorized as e:
+                logging.info(f"Удаляем пользователя {chat_id}\n" + e.description)
+                del userIdValues["chatIds"][chat_id]
+                chatQty = chatQty - 1
 
 
 def remove_job_if_exists(name: str, context: CallbackContext) -> bool:
