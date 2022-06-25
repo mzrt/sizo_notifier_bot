@@ -8,3 +8,4 @@ botState*.json
 dev*.json
 userid.json
 tst.py
+current_session*.py
