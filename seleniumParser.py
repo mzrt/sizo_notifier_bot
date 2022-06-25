@@ -50,36 +50,36 @@ def job():
         logging.info(f'1. prevUrlIdx {prevUrlIdx} currentUrlIdx {currentUrlIdx}')
         browser.get(urls[currentUrlIdx])
     prevUrlIdx = currentUrlIdx
-    logging.info(f'2. prevUrlIdx {prevUrlIdx} currentUrlIdx {currentUrlIdx}')
+    logging.debug(f'2. prevUrlIdx {prevUrlIdx} currentUrlIdx {currentUrlIdx}')
     if browser.find_elements_by_css_selector('form#login_form'):
-        logging.info(f'3.')
+        logging.debug(f'3.')
         login = browser.find_element(By.XPATH, '//div/input[@name="login"]')
         login.send_keys(authlogin + Keys.TAB + authpass)
         authButton = browser.find_element(By.XPATH, '//div/a[@onclick]')
         authButton.click()
-    logging.info(f'4.')
+    logging.debug(f'4.')
     if browser.find_elements_by_css_selector('div#graphic_container'):
-        logging.info(f'5.')
+        logging.debug(f'5.')
         canGetData = True
     else:
-        logging.info(f'6.')
+        logging.debug(f'6.')
         element = WebDriverWait(browser, 10).until(
             EC.presence_of_element_located((By.ID, "graphic_container"))
         )
         if browser.find_elements_by_css_selector('div#graphic_container'):
-            logging.info(f'7.')
+            logging.debug(f'7.')
             canGetData = True
     if canGetData:
-        logging.info(f'8.')
+        logging.debug(f'8.')
         days = browser.execute_script(scriptDays)
-        logging.info(f'8. days {days}')
+        logging.debug(f'8. days {days}')
         data[urls[currentUrlIdx]] = days
         currentUrlIdx = (currentUrlIdx+1)%len(urls)
-        logging.debug(f'job save data to {dataFileName}: {json.dumps(data)}')
+        logging.info(f'{dataFileName}: {json.dumps(data)}')
         with open(dataFileName, 'w') as output_file:
             json.dump(data, output_file, ensure_ascii=False, indent=4)
 
 while True:
-    logging.info(f'0.')
+    logging.debug(f'0.')
     run_pending()
     time.sleep(1)

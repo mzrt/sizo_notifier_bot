@@ -30,7 +30,7 @@ sendAllPrevIdx = -1
 
 minDue = 5
 
-logging.info(f'config {json.dumps(config, indent=4)}')
+logging.debug(f'config {json.dumps(config, indent=4)}')
 messageInterval = 24*60*60
 def start(update: Update, context: CallbackContext) -> None:
     """Sends explanation on how to use the bot."""
@@ -69,7 +69,7 @@ def alarm(context: CallbackContext) -> None:
     data = {'dates':[]}
     if(os.path.isfile(dataFileName)):
         with open(dataFileName, 'r') as input_file:
-            data = json.load(input_file)[url]
+            data['dates'] = json.load(input_file)[url]
     newDates = data['dates']
     daysQty = len(newDates)
 
@@ -85,7 +85,7 @@ def alarm(context: CallbackContext) -> None:
             chatStore['lastNotifyDate'] = time.time()
             chatStore['lastDates'] = json.dumps(newDates)
             save(userIdFileName, userIdValues)
-            logging.info(f'daysQty {daysQty}')
+            logging.debug(f'daysQty {daysQty}')
             if(daysQty==0):
                 context.bot.send_message(chat_id, text='Осутствуют дни для записи\n'+\
                                          chatQtyMessage)
