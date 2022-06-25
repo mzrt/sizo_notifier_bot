@@ -67,12 +67,13 @@ def sendTimeoutInfo(context: CallbackContext):
 def alarm(context: CallbackContext) -> None:
     global openWebUrlkeyboard
     """Send the alarm message."""
-    data = {'dates':[]}
+    data = []
     if(os.path.isfile(dataFileName)):
         with open(dataFileName, 'r') as input_file:
-            data['dates'] = json.load(input_file)[url]
-    newDates = data['dates']
-    daysQty = len(newDates)
+            fileData = json.load(input_file)
+            if url in fileData:
+                data = fileData[url]
+    daysQty = len(data)
 
     chatQty = len(userIdValues["chatIds"])
     chatQtyMessage = f'Количество чатов в которых следят за очередью: {chatQty}'
@@ -81,10 +82,10 @@ def alarm(context: CallbackContext) -> None:
         previousRun = chatStore['lastNotifyDate']
         if (\
             (time.time() - previousRun) > messageInterval\
-                or chatStore['lastDates'] != json.dumps(newDates)\
+                or chatStore['lastDates'] != json.dumps(data)\
         ):
             chatStore['lastNotifyDate'] = time.time()
-            chatStore['lastDates'] = json.dumps(newDates)
+            chatStore['lastDates'] = json.dumps(data)
             save(userIdFileName, userIdValues)
             logging.debug(f'daysQty {daysQty}')
 
@@ -93,7 +94,7 @@ def alarm(context: CallbackContext) -> None:
                     context.bot.send_message(chat_id, text='Осутствуют дни для записи\n'+\
                                             chatQtyMessage)
                 else:
-                    daysStr = (', '.join(str(dt)+f'({weekDayStr(dt)})' for dt in newDates))
+                    daysStr = (', '.join(str(dt)+f'({weekDayStr(dt)})' for dt in data))
                     strDatePeriodName = ''.join(datePeriodName({"d": daysQty}))
                     textMsg = f'Есть запись на {strDatePeriodName}:\n{daysStr}\n{chatQtyMessage}'
                     context.bot.send_message(

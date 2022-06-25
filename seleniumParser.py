@@ -19,8 +19,7 @@ urls = [
     'https://fsin-okno.ru/base/spbilo/sizo1kresty?order_type=2',
     'https://fsin-okno.ru/base/moscow/matrosska',
     'https://fsin-okno.ru/base/moscow/matrosska?order_type=2',
-    'https://fsin-okno.ru/base/novosibirsk/si1novosib',
-    'https://fsin-okno.ru/base/novosibirsk/s2kuibishev'
+    'https://fsin-okno.ru/base/novosibirsk/si1novosib'
 ]
 
 scriptDays = """
