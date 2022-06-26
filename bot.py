@@ -66,7 +66,7 @@ def sendTimeoutInfo(context: CallbackContext):
 
 def deleteChatIdStore(chat_id):
     global userIdValues
-    if not (str(chat_id) in userIdValues['chatIds']):
+    if (str(chat_id) in userIdValues['chatIds']):
         del userIdValues["chatIds"][str(chat_id)]
         save(userIdFileName, userIdValues)
 
