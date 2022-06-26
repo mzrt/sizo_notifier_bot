@@ -153,7 +153,7 @@ def watch(update: Update, context: CallbackContext) -> None:
         if due < minDue:
             due = minDue
         jobName = 'notify'
-        job_removed = remove_job_if_exists(jobName, context)
+        job_removed = remove_job_if_exists(jobName, commonContext)
         commonContext.job_queue.run_repeating(alarm, due, context=jobName, name=jobName, first=1)
 
         current_jobs = commonContext.job_queue.get_jobs_by_name('service')
