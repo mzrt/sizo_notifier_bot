@@ -64,6 +64,12 @@ def sendTimeoutInfo(context: CallbackContext):
         userIdValues['issuefixed'] = 'true'
         save(userIdFileName, userIdValues)
 
+def deleteChatIdStore(chat_id):
+    global userIdValues
+    if not (str(chat_id) in userIdValues['chatIds']):
+        del userIdValues["chatIds"][str(chat_id)]
+        save(userIdFileName, userIdValues)
+
 def alarm(context: CallbackContext) -> None:
     global openWebUrlkeyboard
     """Send the alarm message."""
@@ -103,8 +109,8 @@ def alarm(context: CallbackContext) -> None:
                         reply_markup=openWebUrlkeyboard
                     )
             except Unauthorized as e:
-                logging.info(f"Удаляем пользователя {chat_id}\n" + e.description)
-                del userIdValues["chatIds"][chat_id]
+                logging.info(f"Удаляем пользователя {chat_id}\n" + json.dumps(e))
+                deleteChatIdStore(chat_id)
                 chatQty = chatQty - 1
 
 
@@ -177,6 +183,7 @@ def unwatch(update: Update, context: CallbackContext) -> None:
     job_removed = userIdValues['chatIds'].pop(chat_id, None)
     text = 'Наблюдение остановлено!' if job_removed else 'Наблюдение не было запущено.'
     update.message.reply_text(text)
+    save(userIdFileName, userIdValues)
 
 def stopSendallJob(context: CallbackContext, userIds) -> None:
     global sendall_start
