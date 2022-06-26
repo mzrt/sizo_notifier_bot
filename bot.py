@@ -109,7 +109,9 @@ def alarm(context: CallbackContext) -> None:
                         reply_markup=openWebUrlkeyboard
                     )
             except Unauthorized as e:
-                logging.info(f"Удаляем пользователя {chat_id}\n" + json.dumps(e))
+                error_message = traceback.format_exc()
+                logging.error(error_message)
+                logging.info(f"Удаляем пользователя {chat_id}\n")
                 deleteChatIdStore(chat_id)
                 chatQty = chatQty - 1
 
@@ -210,7 +212,14 @@ def sendallJob(context: CallbackContext) -> None:
             context.bot.send_message(chat_id, text=sendall_message)
             if chat_id == userIds[-1]:
                 stopSendallJob(context, userIds)
-        except (IndexError, ValueError):
+        except Unauthorized:
+            error_message = traceback.format_exc()
+            logging.error(error_message)
+            logging.info(f"Удаляем пользователя {chat_id}")
+            deleteChatIdStore(chat_id)
+            chatQty = chatQty - 1
+
+        except (IndexError, ValueError ):
             error_message = traceback.format_exc()
             logging.debug(f'Не удалось отправить сообщение по {chat_id}')
             logging.error(error_message)
