@@ -25,10 +25,6 @@ openWebUrlkeyboard = InlineKeyboardMarkup.from_button(
     InlineKeyboardButton(text="Записаться!", url=url)
 )
 
-sendall_start = 0
-sendall_message = ''
-sendAllPrevIdx = -1
-
 minDue = 5
 
 logging.debug(f'config {json.dumps(config, indent=4)}')
@@ -52,6 +48,7 @@ def sendTimeoutInfo(context: CallbackContext):
     chat_id=botOwnerId
     interval = round(time.time()-getLastTimeout(dataFileName))
     intervalMessageMinimal = requestInterval*1.5
+    userIdValues = load(userIdFileName)
     if(interval>intervalMessageMinimal):
         if(time.time()-userIdValues['lastNotifyDateService']>=requestInterval):
             userIdValues['lastNotifyDateService'] = time.time()
@@ -65,7 +62,7 @@ def sendTimeoutInfo(context: CallbackContext):
         save(userIdFileName, userIdValues)
 
 def deleteChatIdStore(chat_id):
-    global userIdValues
+    userIdValues = load(userIdFileName)
     if (str(chat_id) in userIdValues['chatIds']):
         del userIdValues["chatIds"][str(chat_id)]
         save(userIdFileName, userIdValues)
@@ -80,9 +77,15 @@ def alarm(context: CallbackContext) -> None:
             if url in fileData:
                 data = fileData[url]
     daysQty = len(data)
+    userIdValues = load(userIdFileName)
 
     chatQty = len(userIdValues["chatIds"])
     chatQtyMessage = f'Количество чатов в которых следят за очередью: {chatQty}'
+    newUserIdValues = {
+        **userIdValues,
+        "chatIds": {}
+    }
+
     for chat_id in userIdValues["chatIds"]:
         chatStore = userIdValues["chatIds"][chat_id]
         previousRun = chatStore['lastNotifyDate']
@@ -92,7 +95,6 @@ def alarm(context: CallbackContext) -> None:
         ):
             chatStore['lastNotifyDate'] = time.time()
             chatStore['lastDates'] = json.dumps(data)
-            save(userIdFileName, userIdValues)
             logging.debug(f'daysQty {daysQty}')
 
             try:
@@ -108,13 +110,15 @@ def alarm(context: CallbackContext) -> None:
                         text=textMsg,
                         reply_markup=openWebUrlkeyboard
                     )
+                newUserIdValues["chatIds"][chat_id] = chatStore
             except Unauthorized as e:
                 error_message = traceback.format_exc()
                 logging.error(error_message)
                 logging.info(f"Удаляем пользователя {chat_id}\n")
-                deleteChatIdStore(chat_id)
                 chatQty = chatQty - 1
-
+        else:
+            newUserIdValues["chatIds"][chat_id] = chatStore
+    save(userIdFileName, newUserIdValues)
 
 def remove_job_if_exists(name: str, context: CallbackContext) -> bool:
     """Remove job with given name. Returns whether job was removed."""
@@ -188,57 +192,58 @@ def unwatch(update: Update, context: CallbackContext) -> None:
     update.message.reply_text(text)
     save(userIdFileName, userIdValues)
 
-def stopSendallJob(context: CallbackContext, userIds) -> None:
-    global sendall_start
-    jobName = 'sendall'
-    job_removed = remove_job_if_exists(jobName, context)
-
-    text = f'Рассылка остановлена! Разослано {len(userIds)} сообщений! \
-        За {time.time()-sendall_start} секунд.'
-    if job_removed:
-        context.bot.send_message(botOwnerId, text=text)
-    else:
-        context.bot.send_message(botOwnerId, text='Рассылка не остановлена')
-
-def sendallJob(context: CallbackContext) -> None:
-    global sendall_message
-    global sendAllPrevIdx
+def sendallJobD(sendall_message, sendall_start):
+    sendAllPrevIdx = -1
+    sendAllPrevIdx = 0
+    userIdValues = load(userIdFileName)
     userIds = list(userIdValues["chatIds"].keys())
     logging.debug(f'botOwnerId {botOwnerId}')
-    if len(userIds) > sendAllPrevIdx+1:
-        try:
-            sendAllPrevIdx += 1
-            chat_id = userIds[sendAllPrevIdx]
-            logging.debug(f'{sendAllPrevIdx} chat_id {chat_id}')
-            context.bot.send_message(chat_id, text=sendall_message)
-            if chat_id == userIds[-1]:
-                stopSendallJob(context, userIds)
-        except Unauthorized:
-            error_message = traceback.format_exc()
-            logging.error(error_message)
-            logging.info(f"Удаляем пользователя {chat_id}")
-            deleteChatIdStore(chat_id)
-            chatQty = chatQty - 1
+    def stopSendallJob(context: CallbackContext, userIds) -> None:
+        jobName = 'sendall'
+        job_removed = remove_job_if_exists(jobName, context)
 
-        except (IndexError, ValueError ):
-            error_message = traceback.format_exc()
-            logging.debug(f'Не удалось отправить сообщение по {chat_id}')
-            logging.error(error_message)
+        text = f'Рассылка остановлена! Разослано {len(userIds)} сообщений! \
+            За {time.time()-sendall_start} секунд.'
+        if job_removed:
+            context.bot.send_message(botOwnerId, text=text)
+        else:
+            context.bot.send_message(botOwnerId, text='Рассылка не остановлена')
+    def sendallJob(context: CallbackContext) -> None:
+        if len(userIds) > sendAllPrevIdx+1:
+            try:
+                sendAllPrevIdx += 1
+                chat_id = userIds[sendAllPrevIdx]
+                logging.debug(f'{sendAllPrevIdx} chat_id {chat_id}')
+                context.bot.send_message(chat_id, text=sendall_message)
+                if chat_id == userIds[-1]:
+                    stopSendallJob(context, userIds)
+            except Unauthorized:
+                error_message = traceback.format_exc()
+                logging.error(error_message)
+                logging.info(f"Удаляем пользователя {chat_id}")
+                deleteChatIdStore(chat_id)
+
+            except (IndexError, ValueError ):
+                error_message = traceback.format_exc()
+                logging.debug(f'Не удалось отправить сообщение по {chat_id}')
+                logging.error(error_message)
+    return sendallJob
 
 def sendall(update: Update, context: CallbackContext) -> None:
     """Send the alarm message."""
     sender_id = str(update.message.chat_id)
     if sender_id == botOwnerId:
         global commonContext
-        global sendall_start
-        global sendall_message
-        sendall_message = " ".join(context.args)
+        sendallJob = sendallJobD(
+            sendall_message = " ".join(context.args),
+            sendall_start = time.time()
+        )
+
         try:
             # args[0] should contain the url
             due = 5
             jobName = 'sendall'
             job_removed = remove_job_if_exists(jobName, commonContext)
-            sendall_start = time.time()
             commonContext.job_queue.run_repeating(
                 sendallJob,
                 due,
