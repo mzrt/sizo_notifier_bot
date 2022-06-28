@@ -7,12 +7,12 @@ from telegram.error import  Unauthorized
 
 # Local imports
 from botusers import load, save
-from logger import logger_bot as logging
+from logger import getlogger_bot as getlogging
 from requestAlive import getLastTimeout
 from utils.date import datePeriodName, weekDayStr
 from config import config
 
-#logging = app_log_bot
+logging = getlogging()
 dataFileName = config['SELENIUM_DATA_JSON_FILENAME']
 requestInterval = int(config['REQUEST_SECONDS_INTERVAL'])*60
 userIdFileName = config['USERID_FILENAME']
@@ -186,7 +186,7 @@ def watch(update: Update, context: CallbackContext) -> None:
 def unwatch(update: Update, context: CallbackContext) -> None:
     """Remove the job if the user changed their mind."""
     chat_id = str(update.message.chat_id)
-    global userIdValues
+    userIdValues = load(userIdFileName)
     job_removed = userIdValues['chatIds'].pop(chat_id, None)
     text = 'Наблюдение остановлено!' if job_removed else 'Наблюдение не было запущено.'
     update.message.reply_text(text)

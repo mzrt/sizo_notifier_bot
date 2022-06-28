@@ -2,10 +2,11 @@ import json
 import sqlite3 as sq
 
 # Local imports
-from logger import logger_parser as logging
+from logger import getlogger_initDb as getlogging
 from config import config
 import datetime
 from botusers import load, save
+logging = getlogging()
 
 url = config['URL']
 urlPeredachi = 'peredachi'
@@ -18,9 +19,21 @@ sizoCode = config['SIZO_CODE']
 initDbByJSON = config['INITDB_BY_JSON'] == 'true'
 dbFileName = config['DB_FILENAME']
 userIdFileName = config['USERID_FILENAME']
-def insertUpdate(cur, table, wherecondition, insertvalkeys, insertvals, update, setExpression, params):
+def insertUpdate(
+    cur,
+    table,
+    wherecondition,
+    insertvalkeys,
+    insertvals,
+    update,
+    setExpression,
+    params
+):
     print(f"select count(*) from {table} where {wherecondition};")
-    rowsQty = cur.execute(f"select count(*) from {table} where {wherecondition};", params).fetchone()[0]
+    rowsQty = cur.execute(
+        f"select count(*) from {table} where {wherecondition};",
+        params
+    ).fetchone()[0]
     if rowsQty==0:
         cur.execute(f"INSERT INTO {table}({insertvalkeys}) VALUES({insertvals})", params)
     elif update:
@@ -32,7 +45,8 @@ with sq.connect(dbFileName) as conn:
     cur.executescript("""
         -- DROP TABLE IF EXISTS collections;
         CREATE TABLE IF NOT EXISTS collections(
-            collectionId INTEGER PRIMARY KEY AUTOINCREMENT
+            collectionId INTEGER PRIMARY KEY AUTOINCREMENT,
+            classId TEXT
         );
 
         -- DROP TABLE IF EXISTS prisons;
@@ -48,7 +62,7 @@ with sq.connect(dbFileName) as conn:
             AFTER INSERT ON prisons
             WHEN NEW.urls IS NULL
         BEGIN
-            INSERT INTO collections VALUES(NULL);
+            INSERT INTO collections(classId) VALUES('urls');
             UPDATE prisons
             SET urls = (SELECT MAX(collectionId) FROM collections)
             WHERE id = NEW.id;
@@ -100,11 +114,14 @@ with sq.connect(dbFileName) as conn:
         setExpression="name=:name",
         params={"code":sizoCode, "name":sizoName}
     )
-    urlsCollection = cur.execute("SELECT urls FROM prisons WHERE code=:code;", {"code":sizoCode}).fetchone()[0]
+    urlsCollection = cur.execute(
+        "SELECT urls FROM prisons WHERE code=:code;", {"code":sizoCode}
+    ).fetchone()[0]
     insertUpdate(
         cur,
         "urls",
-        wherecondition="collectionId=:collectionId AND urltype=(select max(id) from urlTypes where code=:urlType)",
+        wherecondition="collectionId=:collectionId " +
+            "AND urltype=(select max(id) from urlTypes where code=:urlType)",
         insertvalkeys="collectionId, urltype, url",
         insertvals=":collectionId, (select max(id) from urlTypes where code=:urlType), :url",
         update=True,
@@ -117,19 +134,31 @@ with sq.connect(dbFileName) as conn:
         CREATE TABLE IF NOT EXISTS users(
             id TEXT PRIMARY KEY,
             submitedUrls INTEGER UNIQUE,
+            subscribes INTEGER UNIQUE,
+            logins INTEGER UNIQUE,
             notifyLog INTEGER UNIQUE
         );
         CREATE TRIGGER IF NOT EXISTS users_collection_trigger
             AFTER INSERT ON users
         BEGIN
-            INSERT INTO collections VALUES(NULL);
+            INSERT INTO collections(classId) VALUES('submitedurls');
             UPDATE users
             SET submitedUrls = (SELECT MAX(collectionId) FROM collections)
             WHERE id=NEW.id;
 
-            INSERT INTO collections VALUES(NULL);
+            INSERT INTO collections(classId) VALUES('notifylog');
             UPDATE users
             SET notifyLog = (SELECT MAX(collectionId) FROM collections)
+            WHERE id=NEW.id;
+
+            INSERT INTO collections(classId) VALUES('subscribes');
+            UPDATE users
+            SET subscribes = (SELECT MAX(collectionId) FROM collections)
+            WHERE id=NEW.id;
+
+            INSERT INTO collections(classId) VALUES('logins');
+            UPDATE users
+            SET logins = (SELECT MAX(collectionId) FROM collections)
             WHERE id=NEW.id;
         END;
         CREATE TABLE IF NOT EXISTS submitedUrls(
@@ -143,6 +172,21 @@ with sq.connect(dbFileName) as conn:
             notifyTime REAL,
             parseLogId INTEGER,
             UNIQUE (collectionId, parseLogId)
+        );
+        CREATE TABLE IF NOT EXISTS subcribes(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            collectionId INTEGER,
+            urlId INTEGER,
+            loginId INTEGER,
+            dateStart REAL,
+            dateEnd REAL,
+            UNIQUE (collectionId, urlId, loginId)
+        );
+        CREATE TABLE IF NOT EXISTS logins(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            collectionId INTEGER,
+            login TEXT,
+            pass TEXT,
         );
     """)
 
@@ -182,7 +226,9 @@ with sq.connect(dbFileName) as conn:
             setExpression="",
             params={"urlId":urlId, "datetime":now, "daysSnapshot": "[]"}
         )
-        parseLogId = cur.execute("SELECT max(id) FROM parserLog WHERE urlId=:urlId;", {"urlId":urlId}).fetchone()[0]
+        parseLogId = cur.execute(
+            "SELECT max(id) FROM parserLog WHERE urlId=:urlId;", {"urlId":urlId}
+        ).fetchone()[0]
         cur.execute("""
             INSERT INTO notifyLog(collectionId, notifyTime, parseLogId)
             SELECT notifyLog, :notifyTime, :parseLogId FROM users

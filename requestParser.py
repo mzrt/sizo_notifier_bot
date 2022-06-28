@@ -5,9 +5,10 @@ from lxml import html
 from dotenv import dotenv_values
 
 # Local imports
-from logger import logger_parser as logging
+from logger import getlogger_parser as getlogging
 from config import config
 
+logging = getlogging()
 url = config['URL']
 dataFileName = config['DATA_JSON_FILENAME']
 

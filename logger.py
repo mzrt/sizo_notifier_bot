@@ -7,37 +7,24 @@ from config import config, devMode
 level = logging.DEBUG if devMode else logging.INFO
 logFile = config['LOG_FILENAME_BOT']
 logFileParser=config['LOG_FILENAME_PARSER']
-logFileSelenium=config['LOG_FILENAME_PARSER']
+logFileSelenium=config['LOG_FILENAME_SELENIUM']
+logFileInitDb=config['LOG_FILENAME_INITDB']
 
 log_formatter = logging.Formatter('%(asctime)s %(levelname)s %(funcName)s(%(lineno)d) %(message)s')
 
-my_handler_bot = RotatingFileHandler(logFile, mode='a', maxBytes=5*1024*1024,
-                                 backupCount=2, encoding='utf-8', delay=0)
-my_handler_bot.setFormatter(log_formatter)
-my_handler_bot.setLevel(level)
+def getLogger(fileName, loggerLevel, loggerName):
+    my_handler = RotatingFileHandler(fileName, mode='a', maxBytes=5*1024*1024,
+                                    backupCount=2, encoding='utf-8', delay=0)
+    my_handler.setFormatter(log_formatter)
+    my_handler.setLevel(loggerLevel)
 
-logger_bot = logging.getLogger('bot')
-logger_bot.setLevel(logging.DEBUG)
+    logger_bot = logging.getLogger(loggerName)
+    logger_bot.setLevel(logging.DEBUG)
 
-logger_bot.addHandler(my_handler_bot)
+    logger_bot.addHandler(my_handler)
+    return logger_bot
 
-
-my_handler_parser = RotatingFileHandler(logFileParser, mode='a', maxBytes=5*1024*1024,
-                                 backupCount=2, encoding='utf-8', delay=0)
-my_handler_parser.setFormatter(log_formatter)
-my_handler_parser.setLevel(level)
-
-logger_parser = logging.getLogger('parser')
-logger_parser.setLevel(logging.INFO)
-
-logger_parser.addHandler(my_handler_parser)
-
-my_handler_selenium = RotatingFileHandler(logFileSelenium, mode='a', maxBytes=5*1024*1024,
-                                 backupCount=2, encoding='utf-8', delay=0)
-my_handler_selenium.setFormatter(log_formatter)
-my_handler_selenium.setLevel(level)
-
-logger_selenium = logging.getLogger('selenium')
-logger_selenium.setLevel(logging.INFO)
-
-logger_selenium.addHandler(my_handler_selenium)
+def getlogger_bot(): return getLogger(logFile, logging.DEBUG, 'bot')
+def getlogger_parser(): return getLogger(logFileParser, logging.INFO, 'parser')
+def getlogger_selenium(): return getLogger(logFileSelenium, logging.INFO, 'selenium')
+def getlogger_initDb(): return getLogger(logFileInitDb, logging.INFO, 'initDb')

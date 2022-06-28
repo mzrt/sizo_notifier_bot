@@ -6,9 +6,10 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 # Local imports
-from logger import logger_selenium as logging
+from logger import getlogger_selenium as getlogging
 from config import config
 
+logging = getlogging()
 #urls = config['URLS']
 authlogin = config['AUTH_LOGIN']
 authpass = config['AUTH_PASS']
