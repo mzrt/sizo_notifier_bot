@@ -26,5 +26,5 @@ def getLogger(fileName, loggerLevel, loggerName):
 
 def getlogger_bot(): return getLogger(logFile, logging.DEBUG, 'bot')
 def getlogger_parser(): return getLogger(logFileParser, logging.INFO, 'parser')
-def getlogger_selenium(): return getLogger(logFileSelenium, logging.INFO, 'selenium')
+def getlogger_selenium(): return getLogger(logFileSelenium, logging.DEBUG, 'selenium')
 def getlogger_initDb(): return getLogger(logFileInitDb, logging.INFO, 'initDb')

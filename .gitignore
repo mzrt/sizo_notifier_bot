@@ -2,10 +2,11 @@
 *.log*
 *.bak
 *data*.json
+*urls*.json
 *pycache*
 botState*.json
 *.db
 dev*.json
 userid.json
 tst.py
-current_session*.py
+*_session*.py
