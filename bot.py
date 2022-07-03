@@ -89,10 +89,10 @@ def alarm(context: CallbackContext) -> None:
     for chat_id in userIdValues["chatIds"]:
         chatStore = userIdValues["chatIds"][chat_id]
         previousRun = chatStore['lastNotifyDate']
-        if (\
-            (time.time() - previousRun) > messageInterval\
-                or chatStore['lastDates'] != json.dumps(data)\
+        if (
+            chatStore['lastDates'] != json.dumps(data)
         ):
+            logging.info(f"lastDates {chatStore['lastDates']} != data {json.dumps(data)}")
             chatStore['lastNotifyDate'] = time.time()
             chatStore['lastDates'] = json.dumps(data)
             logging.debug(f'daysQty {daysQty}')
