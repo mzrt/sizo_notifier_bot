@@ -26,13 +26,6 @@ if(urlsFilename and os.path.isfile(urlsFilename)):
             logging.info(f'5.')
             urls = urlsLoaded
 
-scriptDays = """
-return Array.from(document.querySelectorAll('div#graphic_container > a')).map( a=> a.href.replace(
-    /^.*&date=(\d{4})-(\d\d)-(\d\d).*$/g,
-    '$3.$2.$1'
-))
-"""
-
 logging.info(f'config {json.dumps(config, indent=4)}')
 import time
 def wait_for(condition_function):
@@ -103,7 +96,22 @@ def job():
     global currentUrlIdx
     global data
     global urls
-    global scriptDays
+    scriptDays = """
+    return Array.from(document.querySelectorAll('div#graphic_container > a')).map( a=> a.href.replace(
+        /^.*&date=(\d{4})-(\d\d)-(\d\d).*$/g,
+        '$3.$2.$1'
+    ))
+    """
+
+    scriptDaysVizit = """
+    return Array.from(document.querySelectorAll('div#graphic_container > form')).map(
+        a=> a.id.replace(
+            /^.*(\d{4})-(\d\d)-(\d\d).*$/g,
+            '$3.$2.$1'
+            )
+    )
+    """
+
     global authorized
     if not urls : return
     if prevUrlIdx != currentUrlIdx:
@@ -131,7 +139,7 @@ def job():
             authorized = True
     if authorized:
         logging.debug(f'8.')
-        days = browser.execute_script(scriptDays)
+        days = browser.execute_script(scriptDays if sizoSite else scriptDaysVizit)
         logging.debug(f'8. days {days}')
         data[urls[currentUrlIdx]] = days
         currentUrlIdx = (currentUrlIdx+1)%len(urls)
