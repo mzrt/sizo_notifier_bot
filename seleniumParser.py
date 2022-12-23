@@ -1,6 +1,6 @@
 import json, os, re
 from selenium import webdriver
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, WebDriverException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
@@ -133,7 +133,11 @@ def job():
     if not urls : return
     if prevUrlIdx != currentUrlIdx:
         logging.info(f'1. prevUrlIdx {prevUrlIdx} currentUrlIdx {currentUrlIdx}')
-        browser.get(urls[currentUrlIdx])
+        try:
+            browser.get(urls[currentUrlIdx])
+        except WebDriverException:
+            browser.close()
+            exit()
     prevUrlIdx = currentUrlIdx
     logging.debug(f'2. prevUrlIdx {prevUrlIdx} currentUrlIdx {currentUrlIdx}')
     login()
