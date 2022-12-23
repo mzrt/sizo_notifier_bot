@@ -103,7 +103,7 @@ def job():
         elem => !elem.querySelectorAll('div.busy').length
     ).map(
         a=> ({
-            onclickRun: a.onclick && a.onclick(),
+            onclickRun: a.href && a.href.split('&ss=').length < 2 && a.onclick && a.onclick(),
             url: a.href,
             places: a.href.replace(
                 /^.*&t=(\d+).*$/g,
