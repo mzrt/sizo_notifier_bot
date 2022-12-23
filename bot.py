@@ -67,6 +67,11 @@ def deleteChatIdStore(chat_id):
         del userIdValues["chatIds"][str(chat_id)]
         save(userIdFileName, userIdValues)
 
+def getSnapShotData(data):
+    return (','.join(
+        (f'{dt["day"]}|{dt["places"]})') for dt in data
+    ))
+
 def alarm(context: CallbackContext) -> None:
     global openWebUrlkeyboard
     """Send the alarm message."""
@@ -90,11 +95,11 @@ def alarm(context: CallbackContext) -> None:
         chatStore = userIdValues["chatIds"][chat_id]
         previousRun = chatStore['lastNotifyDate']
         if (
-            chatStore['lastDates'] != json.dumps(data)
+            chatStore['lastDates'] != getSnapShotData(data)
         ):
-            logging.info(f"lastDates {chatStore['lastDates']} != data {json.dumps(data)}")
+            logging.info(f"lastDates {chatStore['lastDates']} != data {getSnapShotData(data)}")
             chatStore['lastNotifyDate'] = time.time()
-            chatStore['lastDates'] = json.dumps(data)
+            chatStore['lastDates'] = getSnapShotData(data)
             logging.debug(f'daysQty {daysQty}')
 
             try:
@@ -102,7 +107,10 @@ def alarm(context: CallbackContext) -> None:
                     context.bot.send_message(chat_id, text='Осутствуют дни для записи\n'+\
                                             chatQtyMessage)
                 else:
-                    daysStr = (', '.join(str(dt)+f'({weekDayStr(dt)})' for dt in data))
+                    daysStr = (', '.join(
+                        (str(dt['day'])+
+                        f'({weekDayStr(dt["day"])}, мест: {dt["places"]})') for dt in data
+                    ))
                     strDatePeriodName = ''.join(datePeriodName({"d": daysQty}))
                     textMsg = f'Есть запись на {strDatePeriodName}:\n{daysStr}\n{chatQtyMessage}'
                     context.bot.send_message(

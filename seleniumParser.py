@@ -53,7 +53,7 @@ from schedule import every, repeat, run_pending
 prevUrlIdx = -1
 currentUrlIdx = 0
 data = {}
-sizoSite = not re.match('https://fsin-vizit.ru/.*', urls[0])
+sizoSite = not re.match('https://fsin-vizit.ru/.*', urls[0] if len(urls) else '')
 authorized = False
 def login_vizit():
     if browser.find_elements_by_css_selector('form#not_auth_table'):
@@ -97,18 +97,35 @@ def job():
     global data
     global urls
     scriptDays = """
-    return Array.from(document.querySelectorAll('div#graphic_container > a')).map( a=> a.href.replace(
-        /^.*&date=(\d{4})-(\d\d)-(\d\d).*$/g,
-        '$3.$2.$1'
-    ))
+    return Array.from(
+        document.querySelectorAll('div#graphic_container > a')
+    ).filter(
+        elem => !elem.querySelectorAll('div.busy').length
+    ).map(
+        a=> ({
+            onclickRun: a.onclick && a.onclick(),
+            url: a.href,
+            places: a.href.replace(
+                /^.*&t=(\d+).*$/g,
+                '$1'
+            ),
+            day: a.href.replace(
+                /^.*&date=(\d{4})-(\d\d)-(\d\d).*$/g,
+                '$3.$2.$1'
+            )})
+        )
     """
 
     scriptDaysVizit = """
     return Array.from(document.querySelectorAll('div#graphic_container > form')).map(
-        a=> a.id.replace(
-            /^.*(\d{4})-(\d\d)-(\d\d).*$/g,
-            '$3.$2.$1'
+        a=> ({
+            url: null,
+            places: null,
+            day: a.id.replace(
+                /^.*(\d{4})-(\d\d)-(\d\d).*$/g,
+                '$3.$2.$1'
             )
+        })
     )
     """
 
