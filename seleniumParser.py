@@ -131,7 +131,7 @@ def job():
 
     global authorized
     if not urls : return
-    if prevUrlIdx != currentUrlIdx:
+    if prevUrlIdx != currentUrlIdx or browser.current_url != urls[currentUrlIdx]:
         logging.info(f'1. prevUrlIdx {prevUrlIdx} currentUrlIdx {currentUrlIdx}')
         browser.get(urls[currentUrlIdx])
     prevUrlIdx = currentUrlIdx
