@@ -53,7 +53,7 @@ from schedule import every, repeat, run_pending
 prevUrlIdx = -1
 currentUrlIdx = 0
 data = {}
-sizoSite = not re.match('https://fsin-vizit.ru/.*', urls[0] if len(urls) else '')
+sizoSite = not re.match('https://f-vizit.ru/.*', urls[0] if len(urls) else '')
 authorized = False
 def login_vizit():
     if browser.find_elements_by_css_selector('form#not_auth_table'):
