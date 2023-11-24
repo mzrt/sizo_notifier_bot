@@ -30,9 +30,9 @@ loginAttemptsQty = 0
 prevUrlIdx = -1
 currentUrlIdx = 0
 data = {}
-sizoSite = not re.match('https://fsin-vizit.ru/.*', urls[0] if len(urls) else '')
+sizoSite = not re.match('https://f-vizit.ru/.*', urls[0] if len(urls) else '')
 sizoLoginUrl = 'https://f-okno.ru/login'
-vizitLoginUrl = 'https://fsin-vizit.ru/login'
+vizitLoginUrl = 'https://f-vizit.ru/login'
 authorized = False
 def wait_captcha():
         WebDriverWait(browser, 10).until(EC.frame_to_be_available_and_switch_to_it((By.CSS_SELECTOR,"iframe[name^='a-'][src^='https://www.google.com/recaptcha/api2/anchor?']")))
@@ -40,7 +40,7 @@ def wait_captcha():
         browser.switch_to.default_content()
         WebDriverWait(browser, 10).until(EC.presence_of_element_located((By.XPATH, '//input[@id="g-recaptcha-response"][@value]')))
         captcha = browser.find_element(By.XPATH, '//input[@id="g-recaptcha-response"]')
-        print('captcha element', captcha, 'catcha value', captcha.get_attribute('value'))
+        print('captcha element', captcha, 'captcha value', captcha.get_attribute('value'))
 
 def login_form_post(form_css_selector, login_input_xpath, auth_button_xpath):
     if browser.find_elements_by_css_selector(form_css_selector):
@@ -70,6 +70,9 @@ def login():
     else:
         login_vizit()
 
-browser.get(sizoLoginUrl)
+if sizoSite:
+    browser.get(sizoLoginUrl)
+else:
+    browser.get(vizitLoginUrl)
 login()
 browser.close()
