@@ -35,9 +35,9 @@ loginAttemptsQty = 0
 prevUrlIdx = -1
 currentUrlIdx = 0
 data = {}
-sizoSite = not re.match('https://fsin-vizit.ru/.*', urls[0] if len(urls) else '')
+sizoSite = not re.match('https://f-vizit.ru/.*', urls[0] if len(urls) else '')
 sizoLoginUrl = 'https://f-okno.ru/login'
-vizitLoginUrl = 'https://fsin-vizit.ru/login'
+vizitLoginUrl = 'https://f-vizit.ru/login'
 authorized = False
 
 def wait_captcha():
