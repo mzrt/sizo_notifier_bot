@@ -28,33 +28,35 @@ if(urlsFilename and os.path.isfile(urlsFilename)):
 
 logging.info(f'config {json.dumps(config, indent=4)}')
 import time
-def wait_for(condition_function):
-    start_time = time.time()
-    while time.time() < start_time + 3:
-        if condition_function():
-            return True
-        else:
-            time.sleep(0.1)
-    raise Exception(
-        'Timeout waiting for {}'.format(condition_function.__name__)
-    )
-class wait_for_page_load(object):
-    def __init__(self, browser):
-        self.browser = browser
-    def __enter__(self):
-        self.old_page = self.browser.find_element_by_tag_name('html')
-    def page_has_loaded(self):
-        new_page = self.browser.find_element_by_tag_name('html')
-        return new_page.id != self.old_page.id
-    def __exit__(self, *_):
-        wait_for(self.page_has_loaded)
 
 from schedule import every, repeat, run_pending
+loginAttemptsMax = 10
+loginAttemptsQty = 0
 prevUrlIdx = -1
 currentUrlIdx = 0
 data = {}
 sizoSite = not re.match('https://fsin-vizit.ru/.*', urls[0] if len(urls) else '')
+sizoLoginUrl = 'https://f-okno.ru/login'
+vizitLoginUrl = 'https://fsin-vizit.ru/login'
 authorized = False
+
+def wait_captcha():
+        WebDriverWait(browser, 10).until(EC.frame_to_be_available_and_switch_to_it((By.CSS_SELECTOR,"iframe[name^='a-'][src^='https://www.google.com/recaptcha/api2/anchor?']")))
+        WebDriverWait(browser, 10).until(EC.presence_of_element_located((By.XPATH, '//input[@id="recaptcha-token"][@value]')))
+        browser.switch_to.default_content()
+        WebDriverWait(browser, 10).until(EC.presence_of_element_located((By.XPATH, '//input[@id="g-recaptcha-response"][@value]')))
+        captcha = browser.find_element(By.XPATH, '//input[@id="g-recaptcha-response"]')
+        print('captcha element', captcha, 'captcha value', captcha.get_attribute('value'))
+
+def login_form_post(form_css_selector, login_input_xpath, auth_button_xpath):
+    if browser.find_elements_by_css_selector(form_css_selector):
+        logging.debug(f'3.')
+        wait_captcha()
+        login = browser.find_element(By.XPATH, login_input_xpath)
+        login.send_keys(authlogin + Keys.TAB + authpass)
+        authButton = browser.find_element(By.XPATH, auth_button_xpath)
+        authButton.click()
+
 def login_vizit():
     if browser.find_elements_by_css_selector('form#not_auth_table'):
         logging.debug(f'3.')
@@ -66,26 +68,11 @@ def login_vizit():
             )
         finally:
             None
-    browser.implicitly_wait(3)
-    if browser.find_elements_by_css_selector('form#login_form'):
-        logging.debug(f'7.')
-        login = browser.find_element(By.XPATH, '//div/input[@name="email"]')
-        login.send_keys(authlogin + Keys.TAB + authpass)
-        authButton = browser.find_element(By.XPATH, '//div[@class="pre_submit"]/a')
-        authButton.click()
-
-
-def login_sizo():
-    if browser.find_elements_by_css_selector('form#login_form'):
-        logging.debug(f'3.')
-        login = browser.find_element(By.XPATH, '//div/input[@name="login"]')
-        login.send_keys(authlogin + Keys.TAB + authpass)
-        authButton = browser.find_element(By.XPATH, '//div/a[@onclick]')
-        authButton.click()
+    login_form_post('form#login_form', '//div/input[@name="email"]', '//div[@class="pre_submit"]/a')
 
 def login():
     if sizoSite:
-        login_sizo()
+        login_form_post('form#login_form', '//div/input[@name="login"]', '//div/a[@onclick]')
     else:
         login_vizit()
 
@@ -130,11 +117,22 @@ def job():
     """
 
     global authorized
+    global loginAttemptsMax
+    global loginAttemptsQty
     if not urls : return
     if prevUrlIdx != currentUrlIdx or browser.current_url != urls[currentUrlIdx]:
         logging.info(f'1. prevUrlIdx {prevUrlIdx} currentUrlIdx {currentUrlIdx}')
         try:
-            browser.get(urls[currentUrlIdx])
+            if authorized:
+                browser.get(urls[currentUrlIdx])
+            else:
+                loginAttemptsQty += 1
+                if sizoSite and (browser.current_url != sizoLoginUrl or loginAttemptsQty>loginAttemptsMax):
+                    loginAttemptsQty = 0
+                    browser.get(sizoLoginUrl)
+                elif not sizoSite and (browser.current_url != vizitLoginUrl or loginAttemptsQty>loginAttemptsMax):
+                    loginAttemptsQty = 0
+                    browser.get(vizitLoginUrl)
         except WebDriverException:
             browser.close()
             exit()
@@ -142,7 +140,7 @@ def job():
     logging.debug(f'2. prevUrlIdx {prevUrlIdx} currentUrlIdx {currentUrlIdx}')
     login()
     logging.debug(f'4.')
-    if browser.find_elements_by_css_selector('div#graphic_container'):
+    if browser.find_elements_by_css_selector('li#clientzone_logout'):
         logging.debug(f'5.')
         authorized = True
     else:
@@ -155,7 +153,7 @@ def job():
             None
         finally:
             None
-        if browser.find_elements_by_css_selector('div#graphic_container'):
+        if browser.find_elements_by_css_selector('li#clientzone_logout'):
             logging.debug(f'7.')
             authorized = True
     if authorized:
