@@ -10,3 +10,4 @@ dev*.json
 userid.json
 tst.py
 *_session*.py
+/env*

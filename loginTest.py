@@ -1,10 +1,10 @@
 import json, os, re
-from selenium import webdriver
-from selenium.common.exceptions import TimeoutException, WebDriverException
+#from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from seleniumwire import webdriver  # Import from seleniumwire
 
 # Local imports
 from logger import getlogger_selenium as getlogging
@@ -17,6 +17,16 @@ authpass = config['AUTH_PASS']
 dataFileName = config['SELENIUM_DATA_JSON_FILENAME']
 
 browser = webdriver.Firefox()
+# Create a request interceptor
+def interceptor(request):
+    #del request.headers['Referer']  # Delete the header first
+    del request.headers['sec-ch-ua']  # Delete the header firs
+    request.headers['sec-ch-ua'] = '"Google Chrome";v="119", "Chromium";v="119", "Not?A_Brand";v="24"'
+    del request.headers['sec-ch-ua-mobile']  # Delete the header firs
+    request.headers['sec-ch-ua-mobile'] = '?0'
+    del request.headers['sec-ch-ua-platform']  # Delete the header firs
+    request.headers['sec-ch-ua-platform'] = '"Windows"'
+
 urls = []
 urlsFilename = config['PARSE_URLS_FILENAME']
 if(urlsFilename and os.path.isfile(urlsFilename)):
@@ -34,16 +44,28 @@ sizoSite = not re.match('https://f-vizit.ru/.*', urls[0] if len(urls) else '')
 sizoLoginUrl = 'https://f-okno.ru/login'
 vizitLoginUrl = 'https://f-vizit.ru/login'
 authorized = False
+def check_auth():
+    authorized = None
+    if browser.find_element(By.CSS_SELECTOR, 'ul#auth'):
+        logging.debug(f'3.')
+        try:
+            element = WebDriverWait(browser, 10).until(
+                EC.presence_of_element_located((By.ID, "login_form"))
+            )
+            authorized = False
+        finally:
+            None
+    elif browser.find_element(By.CSS_SELECTOR, 'li#clientzone_logout'):
+        authorized = True
+    return authorized
+
 def wait_captcha():
-        WebDriverWait(browser, 10).until(EC.frame_to_be_available_and_switch_to_it((By.CSS_SELECTOR,"iframe[name^='a-'][src^='https://www.google.com/recaptcha/api2/anchor?']")))
-        WebDriverWait(browser, 10).until(EC.presence_of_element_located((By.XPATH, '//input[@id="recaptcha-token"][@value]')))
-        browser.switch_to.default_content()
         WebDriverWait(browser, 10).until(EC.presence_of_element_located((By.XPATH, '//input[@id="g-recaptcha-response"][@value]')))
         captcha = browser.find_element(By.XPATH, '//input[@id="g-recaptcha-response"]')
         print('captcha element', captcha, 'captcha value', captcha.get_attribute('value'))
 
-def login_form_post(form_css_selector, login_input_xpath, auth_button_xpath):
-    if browser.find_elements_by_css_selector(form_css_selector):
+def login_form_post(form_css_selector, login_input_xpath, auth_button_xpath):    
+    if check_auth() == False and browser.find_element(By.CSS_SELECTOR, form_css_selector):
         logging.debug(f'3.')
         wait_captcha()
         login = browser.find_element(By.XPATH, login_input_xpath)
@@ -51,24 +73,11 @@ def login_form_post(form_css_selector, login_input_xpath, auth_button_xpath):
         authButton = browser.find_element(By.XPATH, auth_button_xpath)
         authButton.click()
 
-def login_vizit():
-    if browser.find_elements_by_css_selector('form#not_auth_table'):
-        logging.debug(f'3.')
-        loginUrl = browser.find_element(By.XPATH, '//h1/a[@onclick]')
-        loginUrl.click()
-        try:
-            element = WebDriverWait(browser, 10).until(
-                EC.presence_of_element_located((By.ID, "login_form"))
-            )
-        finally:
-            None
-    login_form_post('form#login_form', '//div/input[@name="email"]', '//div[@class="pre_submit"]/a')
-
 def login():
     if sizoSite:
         login_form_post('form#login_form', '//div/input[@name="login"]', '//div/a[@onclick]')
     else:
-        login_vizit()
+        login_form_post('form#login_form', '//div/input[@name="email"]', '//div[@class="pre_submit"]/a')
 
 if sizoSite:
     browser.get(sizoLoginUrl)
