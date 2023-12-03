@@ -1,6 +1,6 @@
 import json, os, re
 from seleniumwire import webdriver  # Import from seleniumwire
-from selenium.common.exceptions import TimeoutException, WebDriverException
+from selenium.common.exceptions import TimeoutException, WebDriverException, NoSuchElementException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
@@ -16,17 +16,19 @@ authlogin = config['AUTH_LOGIN']
 authpass = config['AUTH_PASS']
 dataFileName = config['SELENIUM_DATA_JSON_FILENAME']
 
-# Create a request interceptor
-def interceptor(request):
-    #del request.headers['Referer']  # Delete the header first
-    del request.headers['sec-ch-ua']  # Delete the header firs
-    request.headers['sec-ch-ua'] = '"Google Chrome";v="119", "Chromium";v="119", "Not?A_Brand";v="24"'
-    del request.headers['sec-ch-ua-mobile']  # Delete the header firs
-    request.headers['sec-ch-ua-mobile'] = '?0'
-    del request.headers['sec-ch-ua-platform']  # Delete the header firs
-    request.headers['sec-ch-ua-platform'] = '"Windows"'
-
 browser = webdriver.Firefox()
+def interceptor(request):
+    del request.headers['sec-ch-ua']
+    request.headers['sec-ch-ua'] = '"Google Chrome";v="119", "Chromium";v="119", "Not?A_Brand";v="24"'
+    del request.headers['sec-ch-ua-mobile']
+    request.headers['sec-ch-ua-mobile'] = '?0'
+    del request.headers['sec-ch-ua-platform']
+    request.headers['sec-ch-ua-platform'] = '"Windows"'
+    del request.headers['User-Agent']
+    request.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
+
+browser.request_interceptor = interceptor
+
 urls = []
 urlsFilename = config['PARSE_URLS_FILENAME']
 if(urlsFilename and os.path.isfile(urlsFilename)):
@@ -49,21 +51,25 @@ sizoSite = not re.match('https://f-vizit.ru/.*', urls[0] if len(urls) else '')
 sizoLoginUrl = 'https://f-okno.ru/login'
 vizitLoginUrl = 'https://f-vizit.ru/login'
 authorized = False
-
+browser.get(urls[currentUrlIdx])
+def get_login_url():
+    if sizoSite:
+        browser.get(sizoLoginUrl)
+    else:
+        browser.get(vizitLoginUrl)
 def check_auth():
     authorized = None
-    if browser.find_element(By.CSS_SELECTOR, 'ul#auth'):
-        logging.debug(f'3.')
+    try:
+        browser.find_element(By.CSS_SELECTOR, 'ul#auth')
+        authorized = False
+    except NoSuchElementException:
         try:
-            element = WebDriverWait(browser, 10).until(
-                EC.presence_of_element_located((By.ID, "login_form"))
-            )
-            authorized = False
-        finally:
+            browser.find_element(By.CSS_SELECTOR, 'li#clientzone_logout')
+            authorized = True
+        except NoSuchElementException:
             None
-    elif browser.find_element(By.CSS_SELECTOR, 'li#clientzone_logout'):
-        authorized = True
     return authorized
+
 
 def wait_captcha():
         WebDriverWait(browser, 10).until(EC.presence_of_element_located((By.XPATH, '//input[@id="g-recaptcha-response"][@value]')))
@@ -85,13 +91,10 @@ def login():
     else:
         login_form_post('form#login_form', '//div/input[@name="email"]', '//div[@class="pre_submit"]/a')
 
-
-@repeat(every(int(config['REQUEST_SECONDS_INTERVAL'])).seconds)
-def job():
+def getDays():
     global prevUrlIdx
     global currentUrlIdx
     global data
-    global urls
     scriptDays = """
     return Array.from(
         document.querySelectorAll('div#graphic_container > a')
@@ -124,11 +127,21 @@ def job():
         })
     )
     """
+    prevUrlIdx = currentUrlIdx
+    logging.debug(f'2. prevUrlIdx {prevUrlIdx} currentUrlIdx {currentUrlIdx}')
+    days = browser.execute_script(scriptDays if sizoSite else scriptDaysVizit)
+    logging.debug(f'8. days {days}')
+    data[urls[currentUrlIdx]] = days
+    currentUrlIdx = (currentUrlIdx+1)%len(urls)
+    logging.info(f'{dataFileName}: {json.dumps(data)}')
+    with open(dataFileName, 'w') as output_file:
+        json.dump(data, output_file, ensure_ascii=False, indent=4)
 
-    global authorized
-    global loginAttemptsMax
+@repeat(every(int(config['REQUEST_SECONDS_INTERVAL'])).seconds)
+def job():
     global loginAttemptsQty
     if not urls : return
+    authorized = check_auth()
     if prevUrlIdx != currentUrlIdx or browser.current_url != urls[currentUrlIdx]:
         logging.info(f'1. prevUrlIdx {prevUrlIdx} currentUrlIdx {currentUrlIdx}')
         try:
@@ -138,44 +151,20 @@ def job():
                 loginAttemptsQty += 1
                 if sizoSite and (browser.current_url != sizoLoginUrl or loginAttemptsQty>loginAttemptsMax):
                     loginAttemptsQty = 0
-                    browser.get(sizoLoginUrl)
+                    get_login_url()
                 elif not sizoSite and (browser.current_url != vizitLoginUrl or loginAttemptsQty>loginAttemptsMax):
                     loginAttemptsQty = 0
-                    browser.get(vizitLoginUrl)
+                    get_login_url()
         except WebDriverException:
             browser.close()
             exit()
-    prevUrlIdx = currentUrlIdx
-    logging.debug(f'2. prevUrlIdx {prevUrlIdx} currentUrlIdx {currentUrlIdx}')
     login()
     logging.debug(f'4.')
-    if browser.find_elements_by_css_selector('li#clientzone_logout'):
-        logging.debug(f'5.')
-        authorized = True
-    else:
-        logging.debug(f'6.')
-        try:
-            element = WebDriverWait(browser, 10).until(
-                EC.presence_of_element_located((By.ID, "graphic_container"))
-            )
-        except TimeoutException:
-            None
-        finally:
-            None
-        if browser.find_elements_by_css_selector('li#clientzone_logout'):
-            logging.debug(f'7.')
-            authorized = True
-    if authorized:
-        logging.debug(f'8.')
-        days = browser.execute_script(scriptDays if sizoSite else scriptDaysVizit)
-        logging.debug(f'8. days {days}')
-        data[urls[currentUrlIdx]] = days
-        currentUrlIdx = (currentUrlIdx+1)%len(urls)
-        logging.info(f'{dataFileName}: {json.dumps(data)}')
-        with open(dataFileName, 'w') as output_file:
-            json.dump(data, output_file, ensure_ascii=False, indent=4)
+    if authorized == True:
+        getDays()
 
-while True:
-    logging.debug(f'0.')
-    run_pending()
-    time.sleep(1)
+if __name__ == "__main__":
+    while True:
+        logging.debug(f'0.')
+        run_pending()
+        time.sleep(1)
