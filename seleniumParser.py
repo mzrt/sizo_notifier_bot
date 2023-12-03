@@ -16,7 +16,10 @@ authlogin = config['AUTH_LOGIN']
 authpass = config['AUTH_PASS']
 dataFileName = config['SELENIUM_DATA_JSON_FILENAME']
 
-browser = webdriver.Firefox()
+profile = webdriver.FirefoxProfile()
+profile.set_preference("general.useragent.override", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36")
+browser = webdriver.Firefox(profile)
+
 def interceptor(request):
     del request.headers['sec-ch-ua']
     request.headers['sec-ch-ua'] = '"Google Chrome";v="119", "Chromium";v="119", "Not?A_Brand";v="24"'
@@ -24,8 +27,6 @@ def interceptor(request):
     request.headers['sec-ch-ua-mobile'] = '?0'
     del request.headers['sec-ch-ua-platform']
     request.headers['sec-ch-ua-platform'] = '"Windows"'
-    del request.headers['User-Agent']
-    request.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
 
 browser.request_interceptor = interceptor
 
