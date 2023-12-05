@@ -1,5 +1,6 @@
 import json, os, re
-from seleniumwire import webdriver  # Import from seleniumwire
+#from seleniumwire import webdriver  # Import from seleniumwire
+from selenium import webdriver  # Import from seleniumwire
 from selenium.common.exceptions import TimeoutException, WebDriverException, NoSuchElementException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -15,8 +16,13 @@ logging = getlogging()
 authlogin = config['AUTH_LOGIN']
 authpass = config['AUTH_PASS']
 dataFileName = config['SELENIUM_DATA_JSON_FILENAME']
-
-browser = webdriver.Firefox()
+options = webdriver.ChromeOptions()
+#options.add_argument('headless')
+options.add_argument('--disable-infobars')
+options.add_argument('--disable-dev-shm-usage')
+options.add_argument('--no-sandbox')
+options.add_argument('--remote-debugging-port=9222')
+browser = webdriver.Chrome(options=options)
 def interceptor(request):
     del request.headers['sec-ch-ua']
     request.headers['sec-ch-ua'] = '"Google Chrome";v="119", "Chromium";v="119", "Not?A_Brand";v="24"'
@@ -50,6 +56,8 @@ data = {}
 sizoSite = not re.match('https://f-vizit.ru/.*', urls[0] if len(urls) else '')
 sizoLoginUrl = 'https://f-okno.ru/login'
 vizitLoginUrl = 'https://f-vizit.ru/login'
+sizoRecoveryUrl = 'https://f-okno.ru/recovery'
+vizitRecoveryUrl = 'https://f-vizit.ru/recovery'
 authorized = False
 browser.get(urls[currentUrlIdx])
 def get_login_url():
@@ -71,6 +79,15 @@ def check_auth():
     return authorized
 
 
+def recovery_form_post(recoveryUrl, login_input_xpath, auth_button_xpath):    
+    if check_auth() == False and browser.current_url != recoveryUrl:
+        logging.debug(f'3.')
+        browser.get(recoveryUrl)
+        login = browser.find_element(By.XPATH, login_input_xpath)
+        login.send_keys(authlogin)
+        authButton = browser.find_element(By.XPATH, auth_button_xpath)
+        authButton.click()
+
 def wait_captcha():
         WebDriverWait(browser, 10).until(EC.presence_of_element_located((By.XPATH, '//input[@id="g-recaptcha-response"][@value]')))
         captcha = browser.find_element(By.XPATH, '//input[@id="g-recaptcha-response"]')
@@ -87,9 +104,11 @@ def login_form_post(form_css_selector, login_input_xpath, auth_button_xpath):
 
 def login():
     if sizoSite:
-        login_form_post('form#login_form', '//div/input[@name="login"]', '//div/a[@onclick]')
+        #login_form_post('form#login_form', '//div/input[@name="login"]', '//div/a[@onclick]')
+        recovery_form_post(sizoRecoveryUrl, '//div/input[@name="recovery-email"]', '//div[@class="pre_submit"]/a')
     else:
-        login_form_post('form#login_form', '//div/input[@name="email"]', '//div[@class="pre_submit"]/a')
+        #login_form_post('//form[@id="login_form"]', '//div/input[@name="email"]', '//div[@class="pre_submit"]/a')
+        recovery_form_post(vizitRecoveryUrl, '//div/input[@name="recovery-email"]', '//div[@class="pre_submit"]/a')
 
 def getDays():
     global prevUrlIdx
@@ -151,10 +170,10 @@ def job():
                 loginAttemptsQty += 1
                 if sizoSite and (browser.current_url != sizoLoginUrl or loginAttemptsQty>loginAttemptsMax):
                     loginAttemptsQty = 0
-                    get_login_url()
+                    #get_login_url()
                 elif not sizoSite and (browser.current_url != vizitLoginUrl or loginAttemptsQty>loginAttemptsMax):
                     loginAttemptsQty = 0
-                    get_login_url()
+                    #get_login_url()
         except WebDriverException:
             browser.close()
             exit()
