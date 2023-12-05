@@ -16,13 +16,21 @@ logging = getlogging()
 authlogin = config['AUTH_LOGIN']
 authpass = config['AUTH_PASS']
 dataFileName = config['SELENIUM_DATA_JSON_FILENAME']
-options = webdriver.ChromeOptions()
-#options.add_argument('headless')
-options.add_argument('--disable-infobars')
-options.add_argument('--disable-dev-shm-usage')
-options.add_argument('--no-sandbox')
-options.add_argument('--remote-debugging-port=9222')
-browser = webdriver.Chrome(options=options)
+useChrome = config['USE_CHROME'] == 'true'
+def get_browser(useChrome):
+    retVal = None
+    if useChrome:
+        options = webdriver.ChromeOptions()
+        #options.add_argument('headless')
+        options.add_argument('--disable-infobars')
+        options.add_argument('--disable-dev-shm-usage')
+        options.add_argument('--no-sandbox')
+        options.add_argument('--remote-debugging-port=9222')
+        retVal = webdriver.Chrome(options=options)
+    else:
+        retVal = webdriver.Firefox()
+    return retVal
+browser = get_browser(useChrome=useChrome)
 def interceptor(request):
     del request.headers['sec-ch-ua']
     request.headers['sec-ch-ua'] = '"Google Chrome";v="119", "Chromium";v="119", "Not?A_Brand";v="24"'
@@ -59,12 +67,12 @@ vizitLoginUrl = 'https://f-vizit.ru/login'
 sizoRecoveryUrl = 'https://f-okno.ru/recovery'
 vizitRecoveryUrl = 'https://f-vizit.ru/recovery'
 authorized = False
-browser.get(urls[currentUrlIdx])
 def get_login_url():
     if sizoSite:
         browser.get(sizoLoginUrl)
     else:
         browser.get(vizitLoginUrl)
+get_login_url()
 def check_auth():
     authorized = None
     try:
