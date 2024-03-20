@@ -10,6 +10,8 @@ from selenium.webdriver.support import expected_conditions as EC
 # Local imports
 from logger import getlogger_selenium as getlogging
 from config import config
+from utils.email import getResetPassworCodeWithConfig
+getResetPassworCode = getResetPassworCodeWithConfig(config)
 
 logging = getlogging()
 #urls = config['URLS']
@@ -66,12 +68,18 @@ sizoLoginUrl = 'https://f-okno.ru/login'
 vizitLoginUrl = 'https://f-vizit.ru/login'
 sizoRecoveryUrl = 'https://f-okno.ru/recovery'
 vizitRecoveryUrl = 'https://f-vizit.ru/recovery'
+recovery_code = getResetPassworCode()
 authorized = False
 def get_login_url():
-    if sizoSite:
-        browser.get(sizoLoginUrl)
-    else:
-        browser.get(vizitLoginUrl)
+    try:
+        if sizoSite:
+            browser.get(sizoLoginUrl)
+        else:
+            browser.get(vizitLoginUrl)
+    except WebDriverException:
+        browser.close()
+        exit()
+
 get_login_url()
 def check_auth():
     authorized = None
@@ -87,14 +95,26 @@ def check_auth():
     return authorized
 
 
-def recovery_form_post(recoveryUrl, login_input_xpath, auth_button_xpath):    
-    if check_auth() == False and browser.current_url != recoveryUrl:
-        logging.debug(f'3.')
-        browser.get(recoveryUrl)
-        login = browser.find_element(By.XPATH, login_input_xpath)
-        login.send_keys(authlogin)
-        authButton = browser.find_element(By.XPATH, auth_button_xpath)
-        authButton.click()
+def recovery_form_post(recoveryUrl, login_input_xpath, auth_button_xpath, recovery_code_xpath, recovery_button_xpath, new_password_xpath, new_password_button_xpath):
+    global recovery_code
+    if check_auth() == False:
+        if browser.current_url != recoveryUrl:
+            logging.debug(f'3.')
+            browser.get(recoveryUrl)
+            login = browser.find_element(By.XPATH, login_input_xpath)
+            login.send_keys(authlogin)
+            authButton = browser.find_element(By.XPATH, auth_button_xpath)
+            authButton.click()
+            recovery_code = ''
+
+        if not recovery_code:
+            recovery_code = getResetPassworCode()
+        if browser.current_url == recoveryUrl and browser.find_element(By.XPATH, recovery_code_xpath) and recovery_code:
+            browser.find_element(By.XPATH, recovery_code_xpath).send_keys(recovery_code)
+            browser.find_element(By.XPATH, recovery_button_xpath).click()
+        if browser.current_url == recoveryUrl and browser.find_element(By.XPATH, new_password_xpath):
+            browser.find_element(By.XPATH, new_password_xpath).send_keys(authpass)
+            browser.find_element(By.XPATH, new_password_button_xpath).click()
 
 def wait_captcha():
         WebDriverWait(browser, 10).until(EC.presence_of_element_located((By.XPATH, '//input[@id="g-recaptcha-response"][@value]')))
@@ -111,12 +131,29 @@ def login_form_post(form_css_selector, login_input_xpath, auth_button_xpath):
         authButton.click()
 
 def login():
+    presubmit_path = '//div[@class="pre_submit"]/a'
     if sizoSite:
         #login_form_post('form#login_form', '//div/input[@name="login"]', '//div/a[@onclick]')
-        recovery_form_post(sizoRecoveryUrl, '//div/input[@name="recovery-email"]', '//div[@class="pre_submit"]/a')
+        recovery_form_post(
+            sizoRecoveryUrl,
+            '//div/input[@name="recovery-email"]',
+            presubmit_path,
+            '//div/input[@name="recoverypass-code"]',
+            presubmit_path,
+            '//div/input[@name="newpassword"]',
+            presubmit_path,
+        )
     else:
-        #login_form_post('//form[@id="login_form"]', '//div/input[@name="email"]', '//div[@class="pre_submit"]/a')
-        recovery_form_post(vizitRecoveryUrl, '//div/input[@name="recovery-email"]', '//div[@class="pre_submit"]/a')
+        #login_form_post('//form[@id="login_form"]', '//div/input[@name="email"]', presubmit_path)
+        recovery_form_post(
+            vizitRecoveryUrl, 
+            '//div/input[@name="recovery-email"]',
+            presubmit_path,
+            '//div/input[@name="recoverypass-code"]',
+            presubmit_path,
+            '//div/input[@name="newpassword"]',
+            presubmit_path,
+        )
 
 def getDays():
     global prevUrlIdx
