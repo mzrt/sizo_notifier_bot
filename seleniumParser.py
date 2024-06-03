@@ -94,6 +94,15 @@ def check_auth():
             None
     return authorized
 
+def check_xpath(xpath):
+    exists = None
+    try:
+        browser.find_element(By.XPATH, xpath)
+        exists = True
+    except NoSuchElementException:
+            exists = False
+    return exists
+
 
 def recovery_form_post(recoveryUrl, login_input_xpath, auth_button_xpath, recovery_code_xpath, recovery_button_xpath, new_password_xpath, new_password_button_xpath):
     global recovery_code
@@ -106,15 +115,18 @@ def recovery_form_post(recoveryUrl, login_input_xpath, auth_button_xpath, recove
             authButton = browser.find_element(By.XPATH, auth_button_xpath)
             authButton.click()
             recovery_code = ''
-
-        if not recovery_code:
-            recovery_code = getResetPassworCode()
-        if browser.current_url == recoveryUrl and browser.find_element(By.XPATH, recovery_code_xpath) and recovery_code:
-            browser.find_element(By.XPATH, recovery_code_xpath).send_keys(recovery_code)
-            browser.find_element(By.XPATH, recovery_button_xpath).click()
-        if browser.current_url == recoveryUrl and browser.find_element(By.XPATH, new_password_xpath):
-            browser.find_element(By.XPATH, new_password_xpath).send_keys(authpass)
-            browser.find_element(By.XPATH, new_password_button_xpath).click()
+        else:
+            if not recovery_code:
+                recovery_code = getResetPassworCode()
+            if browser.current_url == recoveryUrl and check_xpath(recovery_code_xpath) and recovery_code:
+                browser.find_element(By.XPATH, recovery_code_xpath).send_keys(recovery_code)
+                browser.find_element(By.XPATH, recovery_button_xpath).click()
+            if browser.current_url == recoveryUrl and check_xpath(new_password_xpath):
+                browser.find_element(By.XPATH, new_password_xpath).send_keys(authpass)
+                browser.find_element(By.XPATH, new_password_button_xpath).click()
+                if check_auth() == False:
+                    recovery_code = ''
+                    get_login_url()
 
 def wait_captcha():
         WebDriverWait(browser, 10).until(EC.presence_of_element_located((By.XPATH, '//input[@id="g-recaptcha-response"][@value]')))
