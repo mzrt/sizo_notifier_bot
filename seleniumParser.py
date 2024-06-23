@@ -145,27 +145,29 @@ def login_form_post(form_css_selector, login_input_xpath, auth_button_xpath):
 def login():
     presubmit_path = '//div[@class="pre_submit"]/a'
     if sizoSite:
-        #login_form_post('form#login_form', '//div/input[@name="login"]', '//div/a[@onclick]')
-        recovery_form_post(
-            sizoRecoveryUrl,
-            '//div/input[@name="recovery-email"]',
-            presubmit_path,
-            '//div/input[@name="recoverypass-code"]',
-            presubmit_path,
-            '//div/input[@name="newpassword"]',
-            presubmit_path,
-        )
+        login_form_post('form#login_form', '//div/input[@name="login"]', '//div/a[@onclick]')
+        if check_auth() == False:
+            recovery_form_post(
+                sizoRecoveryUrl,
+                '//div/input[@name="recovery-email"]',
+                presubmit_path,
+                '//div/input[@name="recoverypass-code"]',
+                presubmit_path,
+                '//div/input[@name="newpassword"]',
+                presubmit_path,
+            )
     else:
-        #login_form_post('//form[@id="login_form"]', '//div/input[@name="email"]', presubmit_path)
-        recovery_form_post(
-            vizitRecoveryUrl, 
-            '//div/input[@name="recovery-email"]',
-            presubmit_path,
-            '//div/input[@name="recoverypass-code"]',
-            presubmit_path,
-            '//div/input[@name="newpassword"]',
-            presubmit_path,
-        )
+        login_form_post('//form[@id="login_form"]', '//div/input[@name="email"]', presubmit_path)
+        if check_auth() == False:
+            recovery_form_post(
+                vizitRecoveryUrl, 
+                '//div/input[@name="recovery-email"]',
+                presubmit_path,
+                '//div/input[@name="recoverypass-code"]',
+                presubmit_path,
+                '//div/input[@name="newpassword"]',
+                presubmit_path,
+            )
 
 def getDays():
     global prevUrlIdx
