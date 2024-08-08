@@ -104,7 +104,7 @@ def alarm(context: CallbackContext) -> None:
 
             try:
                 if(daysQty==0):
-                    context.bot.send_message(chat_id, text='Осутствуют дни для записи\n'+\
+                    context.bot.send_message(chat_id, text='Отсутствуют дни для записи\n'+\
                                             chatQtyMessage)
                 else:
                     daysStr = (', '.join(
