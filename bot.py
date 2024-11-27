@@ -144,7 +144,7 @@ def createChatIdStore(chat_id):
     global userIdValues
     if not (str(chat_id) in userIdValues['chatIds']):
         userIdValues['chatIds'][chat_id] = {}
-        userIdValues['chatIds'][chat_id]['lastDates'] = json.dumps([])
+        userIdValues['chatIds'][chat_id]['lastDates'] = getSnapShotData([])
         userIdValues['chatIds'][chat_id]['lastNotifyDate'] = 0
         save(userIdFileName, userIdValues)
 
