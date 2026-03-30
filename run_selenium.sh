@@ -2,5 +2,5 @@
 export app=prod
 while true
 do
-	python ./seleniumParser.py
+	python3 ./seleniumParser.py
 done

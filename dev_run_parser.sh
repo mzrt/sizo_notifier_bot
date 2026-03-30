@@ -2,5 +2,5 @@
 export app=dev
 while true
 do
-	python ./requestParser.py
+	python3 ./requestParser.py
 done
